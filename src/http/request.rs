@@ -219,8 +219,12 @@ impl MessageTrait for Request {
         }
     }
 
-    fn headers(&self) -> Headers {
+    fn headers(&self) -> &Headers {
         self.message.headers()
+    }
+
+    fn headers_mut(&mut self) -> &mut Headers {
+        self.message.headers_mut()
     }
 
     fn has_header(&self, key: &str) -> bool {
@@ -298,7 +302,7 @@ impl RequestTrait for Request {
     }
 
     fn with_uri(self, uri: Uri, preserve_host: bool) -> Self {
-        let mut headers = self.message.headers();
+        let mut headers = self.message.headers().clone();
         if preserve_host {
             headers.set("Host", &[uri.authority.host.clone()]);
         }

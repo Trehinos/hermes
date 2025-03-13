@@ -155,7 +155,8 @@ pub trait MessageTrait {
     fn with_protocol_version(self, version: Version) -> Self
     where
         Self: Sized;
-    fn headers(&self) -> Headers;
+    fn headers(&self) -> &Headers;
+    fn headers_mut(&mut self) -> &mut Headers;
     fn get_header_line(&self, key: &str) -> Option<String> {
         self.headers().get_line(key)
     }
@@ -257,8 +258,11 @@ impl MessageTrait for Message {
         }
     }
 
-    fn headers(&self) -> Headers {
-        self.headers.clone()
+    fn headers(&self) -> &Headers {
+        &self.headers
+    }
+    fn headers_mut(&mut self) -> &mut Headers {
+        &mut self.headers
     }
     fn has_header(&self, key: &str) -> bool {
         self.headers.data.contains_key(key)

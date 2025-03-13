@@ -540,9 +540,14 @@ impl MessageTrait for Response {
             message: self.message.with_protocol_version(version),
         }
     }
-    fn headers(&self) -> Headers {
+    fn headers(&self) -> &Headers {
         self.message.headers()
     }
+
+    fn headers_mut(&mut self) -> &mut Headers {
+        self.message.headers_mut()
+    }
+    
     fn has_header(&self, key: &str) -> bool {
         self.message.has_header(key)
     }
@@ -611,4 +616,20 @@ impl Display for Response {
         )?;
         write!(f, "{}", self.message)
     }
+}
+
+#[cfg(test)]
+#[test]
+fn test_response_parse() {
+    let input = "HTTP/1.1 200 OK\r\n\
+        Content-Type: text/html\r\n\
+        \r\n\
+        <html>...</html>";
+    let (_, response) = Response::parse(input).unwrap();
+    assert_eq!(response.status, Status::OK);
+    assert_eq!(
+        response.message.headers().get("Content-Type"),
+        Some(&vec!["text/html".to_string()])
+    );
+    assert_eq!(response.message.body(), "<html>...</html>");
 }
