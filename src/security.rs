@@ -1,7 +1,7 @@
 use crate::{
     concepts::Parsable,
     http::{
-        AuthenticationScheme, Handler, Headers, HttpResponse, MiddlewareTrait, Response, Router,
+        AuthenticationScheme, Handler, Headers, HttpResponse, MiddlewareTrait, Response,
         ServerRequest, Uri, Version, WWWAuthenticate,
     },
     security::{
@@ -22,7 +22,6 @@ pub trait User: IdentityPassword + HasPermissions {
 #[derive(Clone)]
 pub struct Firewall<'a, U: User> {
     authenticator: &'a dyn Authenticator<U>,
-    _router: &'a Router,
     pub pattern: Regex,
     pub redirect_path: Option<String>,
     pub excluded_paths: Vec<Regex>,
@@ -30,12 +29,10 @@ pub struct Firewall<'a, U: User> {
 impl<'a, U: User> Firewall<'a, U> {
     pub fn protect(
         authenticator: &'a dyn Authenticator<U>,
-        router: &'a Router,
         pattern: Regex,
     ) -> Self {
         Self {
             authenticator,
-            _router: router,
             pattern,
             redirect_path: None,
             excluded_paths: vec![],

@@ -1,7 +1,7 @@
 use crate::concepts::{Dictionary, Value};
 use crate::http::factory::{HttpRequest, HttpResponse};
 use crate::http::uri::Uri;
-use crate::http::{Headers, Method, Request, Response, Router, Version};
+use crate::http::{Headers, MessageTrait, Method, Request, Response, Version};
 use std::net::IpAddr;
 use std::time::SystemTime;
 
@@ -23,12 +23,10 @@ pub struct ServerConfiguration {
 }
 
 impl ServerConfiguration {
-    pub const DEFAULT_RESPONSE_HEADERS: &'static [(&'static str, &'static [&'static str])] = &[
-        ("Server", &["Hermes v0.1.0"]),
-    ];
-    pub const DEFAULT_REQUEST_HEADERS: &'static [(&'static str, &'static [&'static str])] = &[
-        ("User-Agent", &["Hermes v0.1.0"]),
-    ];
+    pub const DEFAULT_RESPONSE_HEADERS: &'static [(&'static str, &'static [&'static str])] =
+        &[("Server", &["Hermes v0.1.0"])];
+    pub const DEFAULT_REQUEST_HEADERS: &'static [(&'static str, &'static [&'static str])] =
+        &[("User-Agent", &["Hermes v0.1.0"])];
 
     pub fn path_info(&self) -> String {
         self.request_uri.path.to_string()
@@ -104,12 +102,12 @@ pub struct Server {
     pub configuration: ServerConfiguration,
     pub request: HttpRequest,
     pub response: HttpResponse,
-    router: Router,
+    pub response_headers: Headers,
     middleware: Vec<Middleware>,
 }
 
 impl Server {
-    pub fn new(configuration: ServerConfiguration, router: Router) -> Self {
+    pub fn new(configuration: ServerConfiguration) -> Self {
         let request_builder = HttpRequest::new(
             configuration.http_version,
             configuration.default_request_headers.clone(),
@@ -121,34 +119,34 @@ impl Server {
 
         Self {
             configuration,
-            router,
             request: request_builder,
             response: response_builder,
+            response_headers: Headers::new(),
             middleware: vec![],
         }
     }
     pub fn add_middleware(&mut self, middleware: Middleware) {
         self.middleware.push(middleware);
     }
-    pub fn route_request(&mut self, request: &ServerRequest) -> Option<Response> {
-        if let Some(route) = self.router.route(request) {
-            todo!()
-        }
-        None
-    }
 }
 
 impl Handler for Server {
     fn handle(&mut self, request: &ServerRequest) -> Response {
-        for middleware in self.middleware.iter_mut().rev() {
-            if middleware.check(request) {
-                return middleware.handle(request);
+        let mut response = {
+            for middleware in self.middleware.iter_mut().rev() {
+                if middleware.check(request) {
+                    return middleware.handle(request);
+                }
             }
-        }
-        if let Some(response) = self.route_request(request) {
-            return response;
-        }
-        self.response
-            .not_implemented("None of the middleware accepted the request.")
+            self.response
+                .not_implemented("None of the middleware accepted the request.")
+        };
+        let headers = self.configuration.default_response_headers.merge_with(
+            &self
+                .response_headers
+                .merge_with(&response.headers().clone()),
+        );
+        response = response.with_headers(headers);
+        response
     }
 }
