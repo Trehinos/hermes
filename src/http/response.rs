@@ -9,69 +9,135 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Status {
+    /// 100
     Continue,
+    /// 101
     SwitchingProtocols,
+    /// 102
     Processing,
+    /// 103
     EarlyHints,
+    /// 200
     OK,
+    /// 201
     Created,
+    /// 202
     Accepted,
+    /// 203
     NonAuthoritativeInformation,
+    /// 204
     NoContent,
+    /// 205
     ResetContent,
+    /// 206
     PartialContent,
+    /// 207
     MultiStatus,
+    /// 208
     AlreadyReported,
+    /// 226
     IMUsed,
+    /// 300
     MultipleChoices,
+    /// 301
     MovedPermanently,
+    /// 302
     Found,
+    /// 303
     SeeOther,
+    /// 304
     NotModified,
+    /// 305
     UseProxy,
+    /// 307
     TemporaryRedirect,
+    /// 308
     PermanentRedirect,
+    /// 400
     BadRequest,
+    /// 401
     Unauthorized,
+    /// 402
     PaymentRequired,
+    /// 403
     Forbidden,
+    /// 404
     NotFound,
+    /// 405
     MethodNotAllowed,
+    /// 406
     NotAcceptable,
+    /// 407
     ProxyAuthenticationRequired,
+    /// 408
     RequestTimeout,
+    /// 409
     Conflict,
+    /// 410
     Gone,
+    /// 411
     LengthRequired,
+    /// 412
     PreconditionFailed,
+    /// 413
     RequestEntityTooLarge,
+    /// 414
     RequestURITooLong,
+    /// 415
     UnsupportedMediaType,
+    /// 416
     RequestedRangeNotSatisfiable,
+    /// 417
     ExpectationFailed,
+    /// 418
     ImATeapot,
+    /// 421
     MisdirectedRequest,
+    /// 422
     UnprocessableEntity,
+    /// 423
     Locked,
+    /// 424
     FailedDependency,
+    /// 425
+    TooEarly,
+    /// 426
     UpgradeRequired,
+    /// 428
     PreconditionRequired,
+    /// 429
     TooManyRequests,
+    /// 431
     RequestHeaderFieldsTooLarge,
+    /// 451
     UnavailableForLegalReasons,
-    UnrecoverableError,
+    /// 500
     InternalServerError,
+    /// 501
     NotImplemented,
+    /// 502
     BadGateway,
+    /// 503
     ServiceUnavailable,
+    /// 504
     GatewayTimeout,
+    /// 505
     HTTPVersionNotSupported,
+    /// 506
     VariantAlsoNegotiates,
+    /// 507
     InsufficientStorage,
+    /// 508
     LoopDetected,
-    BandwidthLimitExceeded,
+    /// 510
+    #[deprecated(
+        since = "0.1.0",
+        note = "See: https://datatracker.ietf.org/doc/status-change-http-experiments-to-historic"
+    )]
     NotExtended,
+    /// 511
     NetworkAuthenticationRequired,
+    Unknown(u16, &'static str),
 }
 
 impl Status {
@@ -122,12 +188,12 @@ impl Status {
             Self::UnprocessableEntity => 422,
             Self::Locked => 423,
             Self::FailedDependency => 424,
+            Self::TooEarly => 425,
             Self::UpgradeRequired => 426,
             Self::PreconditionRequired => 428,
             Self::TooManyRequests => 429,
             Self::RequestHeaderFieldsTooLarge => 431,
             Self::UnavailableForLegalReasons => 451,
-            Self::UnrecoverableError => 500,
             Self::InternalServerError => 500,
             Self::NotImplemented => 501,
             Self::BadGateway => 502,
@@ -137,9 +203,9 @@ impl Status {
             Self::VariantAlsoNegotiates => 506,
             Self::InsufficientStorage => 507,
             Self::LoopDetected => 508,
-            Self::BandwidthLimitExceeded => 509,
             Self::NotExtended => 510,
             Self::NetworkAuthenticationRequired => 511,
+            Self::Unknown(code, _) => *code,
         }
     }
 
@@ -190,6 +256,7 @@ impl Status {
             422 => Self::UnprocessableEntity,
             423 => Self::Locked,
             424 => Self::FailedDependency,
+            425 => Self::TooEarly,
             426 => Self::UpgradeRequired,
             428 => Self::PreconditionRequired,
             429 => Self::TooManyRequests,
@@ -204,10 +271,22 @@ impl Status {
             506 => Self::VariantAlsoNegotiates,
             507 => Self::InsufficientStorage,
             508 => Self::LoopDetected,
-            509 => Self::BandwidthLimitExceeded,
             510 => Self::NotExtended,
             511 => Self::NetworkAuthenticationRequired,
-            _ => panic!("Invalid status code"),
+            code if (100..=199).contains(&code) => {
+                Self::Unknown(code, "Unknown Informational Status")
+            }
+            code if (200..=299).contains(&code) => Self::Unknown(code, "Unknown Successful Status"),
+            code if (300..=399).contains(&code) => {
+                Self::Unknown(code, "Unknown Redirection Status")
+            }
+            code if (400..=499).contains(&code) => {
+                Self::Unknown(code, "Unknown Client Error Status")
+            }
+            code if (500..=599).contains(&code) => {
+                Self::Unknown(code, "Unknown Server Error Status")
+            }
+            code => panic!("Invalid status code {code}"),
         }
     }
 
@@ -258,12 +337,12 @@ impl Status {
             "Unprocessable Entity" => Self::UnprocessableEntity,
             "Locked" => Self::Locked,
             "Failed Dependency" => Self::FailedDependency,
+            "Too Early" => Self::TooEarly,
             "Upgrade Required" => Self::UpgradeRequired,
             "Precondition Required" => Self::PreconditionRequired,
             "Too Many Requests" => Self::TooManyRequests,
             "Request Header Fields Too Large" => Self::RequestHeaderFieldsTooLarge,
             "Unavailable For Legal Reasons" => Self::UnavailableForLegalReasons,
-            "Unrecoverable Error" => Self::UnrecoverableError,
             "Internal Server Error" => Self::InternalServerError,
             "Not Implemented" => Self::NotImplemented,
             "Bad Gateway" => Self::BadGateway,
@@ -273,9 +352,13 @@ impl Status {
             "Variant Also Negotiates" => Self::VariantAlsoNegotiates,
             "Insufficient Storage" => Self::InsufficientStorage,
             "Loop Detected" => Self::LoopDetected,
-            "Bandwidth Limit Exceeded" => Self::BandwidthLimitExceeded,
             "Not Extended" => Self::NotExtended,
             "Network Authentication Required" => Self::NetworkAuthenticationRequired,
+            "Unknown Informational Status" => Self::Unknown(199, "Unknown Informational Status"),
+            "Unknown Successful Status" => Self::Unknown(299, "Unknown Successful Status"),
+            "Unknown Redirection Status" => Self::Unknown(399, "Unknown Redirection Status"),
+            "Unknown Client Error Status" => Self::Unknown(499, "Unknown Client Error Status"),
+            "Unknown Server Error Status" => Self::Unknown(599, "Unknown Server Error Status"),
             r => panic!("Invalid status reason '{}'", r),
         }
     }
@@ -327,12 +410,12 @@ impl Status {
             Self::UnprocessableEntity => "Unprocessable Entity",
             Self::Locked => "Locked",
             Self::FailedDependency => "Failed Dependency",
+            Self::TooEarly => "Too Early",
             Self::UpgradeRequired => "Upgrade Required",
             Self::PreconditionRequired => "Precondition Required",
             Self::TooManyRequests => "Too Many Requests",
             Self::RequestHeaderFieldsTooLarge => "Request Header Fields Too Large",
             Self::UnavailableForLegalReasons => "Unavailable For Legal Reasons",
-            Self::UnrecoverableError => "Unrecoverable Error",
             Self::InternalServerError => "Internal Server Error",
             Self::NotImplemented => "Not Implemented",
             Self::BadGateway => "Bad Gateway",
@@ -342,102 +425,30 @@ impl Status {
             Self::VariantAlsoNegotiates => "Variant Also Negotiates",
             Self::InsufficientStorage => "Insufficient Storage",
             Self::LoopDetected => "Loop Detected",
-            Self::BandwidthLimitExceeded => "Bandwidth Limit Exceeded",
             Self::NotExtended => "Not Extended",
             Self::NetworkAuthenticationRequired => "Network Authentication Required",
+            Self::Unknown(_, reason) => reason,
         }
     }
 
     pub fn is_informational(&self) -> bool {
-        matches!(
-            self,
-            Self::Continue | Self::SwitchingProtocols | Self::Processing | Self::EarlyHints
-        )
+        (100..=199).contains(&self.to_code())
     }
 
     pub fn is_successful(&self) -> bool {
-        matches!(
-            self,
-            Self::Continue
-                | Self::SwitchingProtocols
-                | Self::Processing
-                | Self::OK
-                | Self::Created
-                | Self::Accepted
-                | Self::NonAuthoritativeInformation
-                | Self::NoContent
-                | Self::ResetContent
-                | Self::PartialContent
-                | Self::MultiStatus
-                | Self::AlreadyReported
-                | Self::IMUsed
-        )
+        (200..=299).contains(&self.to_code())
     }
 
     pub fn is_redirection(&self) -> bool {
-        matches!(
-            self,
-            Self::MultipleChoices
-                | Self::MovedPermanently
-                | Self::Found
-                | Self::SeeOther
-                | Self::NotModified
-                | Self::UseProxy
-                | Self::TemporaryRedirect
-        )
+        (300..=399).contains(&self.to_code())
     }
 
     pub fn is_client_error(&self) -> bool {
-        matches!(
-            self,
-            Self::BadRequest
-                | Self::Unauthorized
-                | Self::PaymentRequired
-                | Self::Forbidden
-                | Self::NotFound
-                | Self::MethodNotAllowed
-                | Self::NotAcceptable
-                | Self::ProxyAuthenticationRequired
-                | Self::RequestTimeout
-                | Self::Conflict
-                | Self::Gone
-                | Self::LengthRequired
-                | Self::PreconditionFailed
-                | Self::RequestEntityTooLarge
-                | Self::RequestURITooLong
-                | Self::UnsupportedMediaType
-                | Self::RequestedRangeNotSatisfiable
-                | Self::ExpectationFailed
-                | Self::ImATeapot
-                | Self::MisdirectedRequest
-                | Self::UnprocessableEntity
-                | Self::Locked
-                | Self::FailedDependency
-                | Self::UpgradeRequired
-                | Self::PreconditionRequired
-                | Self::TooManyRequests
-                | Self::RequestHeaderFieldsTooLarge
-                | Self::UnavailableForLegalReasons
-        )
+        (400..=499).contains(&self.to_code())
     }
 
     pub fn is_server_error(&self) -> bool {
-        matches!(
-            self,
-            Self::InternalServerError
-                | Self::NotImplemented
-                | Self::BadGateway
-                | Self::ServiceUnavailable
-                | Self::GatewayTimeout
-                | Self::HTTPVersionNotSupported
-                | Self::VariantAlsoNegotiates
-                | Self::InsufficientStorage
-                | Self::LoopDetected
-                | Self::BandwidthLimitExceeded
-                | Self::NotExtended
-                | Self::NetworkAuthenticationRequired
-                | Self::UnrecoverableError
-        )
+        (500..=599).contains(&self.to_code())
     }
 }
 
@@ -547,7 +558,7 @@ impl MessageTrait for Response {
     fn headers_mut(&mut self) -> &mut Headers {
         self.message.headers_mut()
     }
-    
+
     fn has_header(&self, key: &str) -> bool {
         self.message.has_header(key)
     }

@@ -114,3 +114,14 @@ pub fn identifier(input: &str) -> IResult<&str, &str> {
     ))
     .parse(input)
 }
+
+#[derive(Debug, Clone)]
+pub enum Value {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Number(f64),
+    String(String),
+    Array(Vec<Value>),
+    Dictionary(Dictionary<Value>),
+}

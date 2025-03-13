@@ -51,11 +51,11 @@ impl<U: User> Handler for Firewall<'_, U> {
     fn check(&self, request: &ServerRequest) -> bool {
         if !self
             .pattern
-            .is_match(&request.http().target.path.to_string())
+            .is_match(&request.request().target.path.to_string())
         {
             return false;
         }
-        if self.path_is_excluded(&request.http().target.path.to_string()) {
+        if self.path_is_excluded(&request.request().target.path.to_string()) {
             return false;
         }
         if self.authenticator.is_authenticated() {
