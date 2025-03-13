@@ -1,0 +1,323 @@
+use crate::concepts::{both_or_none, Parsable};
+use crate::http::request::Query;
+use nom::bytes::complete::{tag, take_till, take_until};
+use nom::character::anychar;
+use nom::combinator::opt;
+use nom::multi::fold_many0;
+use nom::sequence::preceded;
+use nom::IResult;
+use std::fmt::{Display, Formatter};
+
+#[derive(Debug, Default, Clone)]
+pub struct Path {
+    pub resource: String,
+    pub path_info: Option<String>,
+}
+
+impl Display for Path {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}",
+            self.resource,
+            if let Some(p) = &self.path_info {
+                format!("/{}", p)
+            } else {
+                "".to_string()
+            }
+        )
+    }
+}
+
+impl Path {
+    pub fn new(resource: String, path_info: Option<String>) -> Self {
+        Self {
+            resource,
+            path_info,
+        }
+    }
+}
+
+impl Parsable for Path {
+    fn parse(input: &str) -> IResult<&str, Self>
+    where
+        Self: Sized,
+    {
+        let (input, path) = take_till(|c| c == '?' || c == '#' || c == '&')(input)?;
+        if !path.contains('/') {
+            return Ok((input, Self::new(path.to_string(), None)));
+        }
+
+        let parts = path.split('/').collect::<Vec<&str>>();
+        let mut resource = "".to_string();
+        let mut path_info = None;
+        let mut filename = false;
+        for part in parts {
+            if filename {
+                if path_info.is_none() {
+                    path_info = Some(format!("/{}", part));
+                } else {
+                    path_info = Some(format!("{}/{}", path_info.unwrap(), part));
+                }
+            } else {
+                if part.contains('.') {
+                    filename = true;
+                }
+                resource = format!(
+                    "{}/{}",
+                    resource,
+                    part.replace("%20", " ").replace("+", " ")
+                );
+            }
+        }
+        Ok((input, Self::new(resource, path_info)))
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Authority {
+    pub host: String,
+    pub user: Option<String>,
+    pub password: Option<String>,
+    pub port: Option<u16>,
+}
+
+impl Authority {
+    pub fn new(
+        host: String,
+        user: Option<String>,
+        password: Option<String>,
+        port: Option<u16>,
+    ) -> Self {
+        Self {
+            host,
+            user,
+            password,
+            port,
+        }
+    }
+}
+
+impl Authority {
+    pub fn parse_user_info(input: &str) -> IResult<&str, (Option<String>, Option<String>)> {
+        let user: Option<String>;
+        let mut password: Option<String> = None;
+        if input.contains(":") {
+            let (p, u) = take_until(":")(input)?;
+            let (p, _) = tag(":")(p)?;
+            user = Some(u.to_string());
+            password = Some(p.to_string());
+        } else {
+            user = Some(input.to_string());
+        }
+        Ok(("", (user, password)))
+    }
+
+    pub fn parse_host(input: &str) -> IResult<&str, (String, Option<u16>)> {
+        let host: String;
+        let mut port: Option<u16> = None;
+        if input.contains(":") {
+            let (p, h) = take_until(":")(input)?;
+            host = h.to_string();
+            port = Some(p.parse::<u16>().unwrap_or(80));
+        } else {
+            host = input.to_string();
+        }
+        Ok(("", (host, port)))
+    }
+}
+
+impl Parsable for Authority {
+    fn parse(input: &str) -> IResult<&str, Self>
+    where
+        Self: Sized,
+    {
+        let mut input = input;
+        let mut authority: &str;
+        let mut user: Option<String> = None;
+        let mut password: Option<String> = None;
+        if input.contains("/") {
+            let (i, a) = take_until("/")(input)?;
+            authority = a;
+            if authority.contains("@") {
+                let (host_part, user_info) = take_until("@")(authority)?;
+                let (host_part, _) = tag("@")(host_part)?;
+                authority = host_part;
+                let (_, (u, ps)) = Self::parse_user_info(user_info)?;
+                user = u;
+                password = ps;
+            }
+            let (i, _) = tag("/")(i)?;
+            input = i;
+        } else {
+            let (i, a) = take_till(|c| c == '?' || c == '#' || c == '&')(input)?;
+            input = i;
+            authority = a;
+        }
+        let (_, (host, port)) = Self::parse_host(authority)?;
+        Ok((
+            input,
+            Self {
+                host,
+                user,
+                password,
+                port,
+            },
+        ))
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Uri {
+    pub scheme: String,
+    pub authority: Authority,
+    pub path: Path,
+    pub query: Query,
+    pub fragment: Option<String>,
+}
+
+impl Parsable for Uri {
+    fn parse(input: &str) -> IResult<&str, Self>
+    where
+        Self: Sized,
+    {
+        use nom::Parser;
+
+        let mut input = input;
+        let mut scheme = Self::SCHEME_HTTP;
+        if input.contains("://") {
+            let (i, s) = take_until("://")(input)?;
+            scheme = s;
+            let (i, _) = tag("://")(i)?;
+            input = i;
+        }
+        let (input, authority) = Authority::parse(input)?;
+        let (input, path) = Path::parse(input)?;
+
+        let mut fragment = "";
+        let mut query = Query::new();
+        if input.starts_with('?') {
+            let (i, _) = tag("?")(input)?;
+            let (f, q) = Query::parse(i)?;
+            fragment = f;
+            query = q;
+        }
+
+        let (_, fragment) = opt(preceded(
+            tag("#"),
+            fold_many0(anychar, String::new, |mut acc, item| {
+                acc.push(item);
+                acc
+            }),
+        ))
+        .parse(fragment)?;
+
+        Ok((
+            input,
+            Self::new(scheme.to_string(), authority, path, query, fragment),
+        ))
+    }
+}
+
+impl Uri {
+    pub const SCHEME_HTTP: &'static str = "http";
+    pub const SCHEME_HTTPS: &'static str = "https";
+    pub const SCHEME_FTP: &'static str = "ftp";
+    pub const SCHEME_SSH: &'static str = "ssh";
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        scheme: String,
+        authority: Authority,
+        path: Path,
+        query: Query,
+        fragment: Option<String>,
+    ) -> Self {
+        Self {
+            scheme: scheme.clone(),
+            authority,
+            path,
+            query,
+            fragment,
+        }
+    }
+
+    pub fn authority(&self) -> String {
+        format!(
+            "{}@{}",
+            self.authority
+                .user
+                .as_ref()
+                .map(|u| u.to_string())
+                .unwrap_or_default(),
+            self.authority.host
+        )
+    }
+
+    pub fn path(&self) -> Path {
+        self.path.clone()
+    }
+}
+
+impl Display for Uri {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let path = self.path();
+        write!(
+            f,
+            "{}{}{}{}{}",
+            both_or_none(&self.scheme, "://"),
+            if path.resource.is_empty() {
+                self.authority()
+            } else {
+                both_or_none(&self.authority(), "/")
+            },
+            path,
+            both_or_none("?", &self.query.to_string()),
+            both_or_none("#", &self.fragment.clone().unwrap_or("".to_string())),
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_uri() {
+        let uri = "http://host";
+        let uri = Uri::parse(uri).unwrap().1;
+        assert_eq!(uri.scheme, "http");
+        assert_eq!(uri.authority.host, "host");
+        assert_eq!(uri.authority.port, None);
+        assert_eq!(uri.authority.user, None);
+        assert_eq!(uri.authority.password, None);
+        assert_eq!(uri.path.resource, "");
+        assert_eq!(uri.path.path_info, None);
+        assert_eq!(uri.query.to_string(), Query::new().to_string());
+        assert_eq!(uri.fragment, None);
+
+        let uri = "http://user:pass@host:80/path/resource.ext/path_info?query#fragment";
+        let uri = Uri::parse(uri).unwrap().1;
+        assert_eq!(uri.scheme, "http");
+        assert_eq!(uri.authority.host, "host");
+        assert_eq!(uri.authority.port, Some(80));
+        assert_eq!(uri.authority.user, Some("user".to_string()));
+        assert_eq!(uri.authority.password, Some("pass".to_string()));
+        assert_eq!(uri.path.resource, "/path/resource.ext");
+        assert_eq!(uri.path.path_info, Some("/path_info".to_string()));
+        assert_eq!(uri.query.to_string(), "query=".to_string());
+        assert_eq!(uri.fragment, Some("fragment".to_string()));
+
+        let uri = "http://host/path/to/resource.ext/path/info";
+        let uri = Uri::parse(uri).unwrap().1;
+        assert_eq!(uri.scheme, "http");
+        assert_eq!(uri.authority.host, "host");
+        assert_eq!(uri.authority.port, None);
+        assert_eq!(uri.authority.user, None);
+        assert_eq!(uri.authority.password, None);
+        assert_eq!(uri.path.resource, "/path/to/resource.ext");
+        assert_eq!(uri.path.path_info, Some("/path/info".to_string()));
+        assert_eq!(uri.query.to_string(), Query::new().to_string());
+        assert_eq!(uri.fragment, None);
+    }
+}
