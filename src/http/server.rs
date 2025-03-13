@@ -1,6 +1,7 @@
 use crate::concepts::Dictionary;
+use crate::http::factory::{HttpRequest, HttpResponse};
 use crate::http::uri::Uri;
-use crate::http::{Method, Request, Response, Router, Version};
+use crate::http::{Headers, Method, Request, Response, Router, Version};
 use std::net::IpAddr;
 use std::time::SystemTime;
 
@@ -18,6 +19,8 @@ pub enum Value {
 #[derive(Debug, Clone)]
 pub struct ServerConfiguration {
     pub http_version: Version,
+    pub default_request_headers: Headers,
+    pub default_response_headers: Headers,
     pub server_address: IpAddr,
     pub server_name: String,
     pub server_port: u16,
@@ -104,5 +107,43 @@ impl MiddlewareTrait for Middleware {}
 pub struct Server {
     pub configuration: ServerConfiguration,
     pub router: Router,
+    pub request: HttpRequest,
+    pub response: HttpResponse,
     pub middleware: Vec<Middleware>,
+}
+
+impl Server {
+    pub fn new(configuration: ServerConfiguration, router: Router) -> Self {
+        let request_builder = HttpRequest::new(
+            configuration.http_version,
+            configuration.default_request_headers.clone(),
+        );
+        let response_builder = HttpResponse::new(
+            configuration.http_version,
+            configuration.default_response_headers.clone(),
+        );
+
+        Self {
+            configuration,
+            router,
+            request: request_builder,
+            response: response_builder,
+            middleware: vec![],
+        }
+    }
+    pub fn add_middleware(&mut self, middleware: Middleware) {
+        self.middleware.push(middleware);
+    }
+}
+
+impl Handler for Server {
+    fn handle(&mut self, request: &ServerRequest) -> Response {
+        for middleware in self.middleware.iter_mut().rev() {
+            if middleware.check(request) {
+                return middleware.handle(request);
+            }
+        }
+        self.response
+            .not_implemented("None of the middleware accepted the request.")
+    }
 }

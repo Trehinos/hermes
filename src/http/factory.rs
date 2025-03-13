@@ -3,14 +3,19 @@ use crate::http::{
 };
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct HttpRequest {
-    version: Version,
+    pub version: Version,
+    pub default_headers: Headers,
 }
 
 impl HttpRequest {
-    pub fn new(version: Version) -> Self {
-        Self { version }
+    pub fn new(version: Version, default_headers: Headers) -> Self {
+        Self { version, default_headers }
+    }
+
+    pub fn version(version: Version) -> Self {
+        Self::new(version, Headers::new())
     }
 
     pub fn build(&self, method: Method, target: Uri, headers: Headers, body: &str) -> Request {
@@ -19,7 +24,7 @@ impl HttpRequest {
             target,
             message: Message {
                 version: self.version,
-                headers,
+                headers: self.default_headers.merge_with(&headers),
                 body: body.to_string(),
             },
         }
@@ -195,21 +200,27 @@ impl Display for WWWAuthenticate {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct HttpResponse {
-    version: Version,
+    pub version: Version,
+    pub default_headers: Headers,
 }
 
 impl HttpResponse {
-    pub fn new(version: Version) -> Self {
-        Self { version }
+    pub fn new(version: Version, default_headers: Headers) -> Self {
+        Self { version, default_headers }
     }
+
+    pub fn version(version: Version) -> Self {
+        Self::new(version, Headers::new())
+    }
+    
     pub fn with_status(&self, status: Status, headers: Headers) -> Response {
         Response {
             status,
             message: Message {
                 version: self.version,
-                headers,
+                headers: self.default_headers.merge_with(&headers),
                 body: "".to_string(),
             },
         }
@@ -251,5 +262,11 @@ impl HttpResponse {
     }
     pub fn forbidden(&self, headers: Headers) -> Response {
         self.with_status(Status::Forbidden, headers)
+    }
+    pub fn not_implemented(&self, message: &str) -> Response {
+        self.with_status(
+            Status::NotImplemented,
+            Headers::new(),
+        ).with_body(message)
     }
 }

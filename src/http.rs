@@ -18,4 +18,5 @@ pub use routing::*;
 mod server;
 pub use server::*;
 
-pub mod factory;
+mod factory;
+pub use factory::*;

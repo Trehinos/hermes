@@ -1,20 +1,13 @@
 use crate::{
-    http::{
-        Handler,
-        Headers,
-        MiddlewareTrait,
-        Response,
-        Router,
-        ServerRequest,
-        Uri,
-        Version,
-        factory::{AuthenticationScheme, HttpResponse, WWWAuthenticate}
-    },
     concepts::Parsable,
+    http::{
+        AuthenticationScheme, Handler, Headers, HttpResponse, MiddlewareTrait, Response, Router,
+        ServerRequest, Uri, Version, WWWAuthenticate,
+    },
     security::{
         authentication::{Authenticator, IdentityPassword, Provider},
-        authorization::HasPermissions
-    }
+        authorization::HasPermissions,
+    },
 };
 use regex::Regex;
 
@@ -73,7 +66,7 @@ impl<U: User> Handler for Firewall<'_, U> {
         true
     }
     fn handle(&mut self, _: &ServerRequest) -> Response {
-        let builder = HttpResponse::new(Version::Http1_1);
+        let builder = HttpResponse::version(Version::Http1_1);
         if let Some(r) = &self.redirect_path {
             return builder.temporary_redirect(Uri::parse(r).unwrap().1);
         }

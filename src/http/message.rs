@@ -75,6 +75,21 @@ impl Headers {
             data: HashMap::new(),
         }
     }
+    pub fn from(headers: &[(&str, &[&str])]) -> Self {
+        Self {
+            data: headers
+                .iter()
+                .map(|(s, v)| (s.to_string(), v.iter().map(|s| s.to_string()).collect()))
+                .collect(),
+        }
+    }
+    pub fn merge_with(&self, other: &Self) -> Self {
+        let mut headers = self.clone();
+        for (key, values) in other.data.iter() {
+            headers.insert(key, values);
+        }
+        headers
+    }
     pub fn iter(&self) -> impl Iterator<Item = (&String, &Vec<String>)> {
         self.data.iter()
     }
