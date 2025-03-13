@@ -323,36 +323,6 @@ impl Display for Request {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct HttpRequest {
-    version: Version,
-}
-
-impl HttpRequest {
-    pub fn new(version: Version) -> Self {
-        Self { version }
-    }
-
-    pub fn build(&self, method: Method, target: Uri, headers: Headers, body: &str) -> Request {
-        Request {
-            method,
-            target,
-            message: Message {
-                version: self.version,
-                headers,
-                body: body.to_string(),
-            },
-        }
-    }
-
-    pub fn get(&self, target: Uri, headers: Headers) -> Request {
-        self.build(Method::Get, target, headers, "")
-    }
-
-    pub fn post(&self, target: Uri, headers: Headers, body: &str) -> Request {
-        self.build(Method::Post, target, headers, body)
-    }
-}
 
 #[cfg(test)]
 mod tests {

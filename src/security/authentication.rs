@@ -1,4 +1,4 @@
-use crate::http::authentication::password::HasPassword;
+use crate::security::authentication::password::HasPassword;
 
 pub trait HasIdentity {
     fn identity(&self) -> String;

@@ -5,7 +5,6 @@ use nom::sequence::terminated;
 use nom::{IResult, Parser};
 use std::collections::HashMap;
 use std::fmt::Display;
-use nom::combinator::opt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Version {
@@ -133,6 +132,7 @@ impl Parsable for Headers {
         let mut input = input;
         if input.contains("\r\n\r\n") {
             let (i, h) = take_until1("\r\n\r\n")(input)?;
+            let (i, _) = tag("\r\n\r\n")(i)?;
             header_lines = h;
             input = i;
         } else {
@@ -229,7 +229,7 @@ impl Parsable for Message {
     {
         let (input, version) = Self::parse_version(input)?;
         let (body, headers) = Headers::parse(input)?;
-        let (body, _) = opt(tag("\r\n\r\n")).parse(body)?;
+
         Ok((
             "",
             Self {

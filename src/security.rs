@@ -1,8 +1,22 @@
-use crate::http::authentication::{Authenticator, IdentityPassword, Provider};
-use crate::http::authorization::HasPermissions;
-use crate::http::{AuthenticationScheme, Handler, Headers, HttpResponse, MiddlewareTrait, Response, Router, ServerRequest, Uri, Version, WWWAuthenticate};
+use crate::{
+    http::{
+        Handler,
+        Headers,
+        MiddlewareTrait,
+        Response,
+        Router,
+        ServerRequest,
+        Uri,
+        Version,
+        factory::{AuthenticationScheme, HttpResponse, WWWAuthenticate}
+    },
+    concepts::Parsable,
+    security::{
+        authentication::{Authenticator, IdentityPassword, Provider},
+        authorization::HasPermissions
+    }
+};
 use regex::Regex;
-use crate::concepts::Parsable;
 
 pub mod authorization;
 
@@ -42,7 +56,10 @@ impl<'a, U: User> Firewall<'a, U> {
 
 impl<U: User> Handler for Firewall<'_, U> {
     fn check(&self, request: &ServerRequest) -> bool {
-        if !self.pattern.is_match(&request.http().target.path.to_string()) {
+        if !self
+            .pattern
+            .is_match(&request.http().target.path.to_string())
+        {
             return false;
         }
         if self.path_is_excluded(&request.http().target.path.to_string()) {
