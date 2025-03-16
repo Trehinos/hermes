@@ -116,9 +116,9 @@ impl Headers {
         }
         self.data.insert(key.to_string(), values.to_vec());
     }
-    pub fn set(&mut self, key: &str, values: &[String]) {
+    pub fn set(&mut self, key: &str, values: &[&str]) {
         self.data.remove(key);
-        self.data.insert(key.to_string(), values.to_vec());
+        self.data.insert(key.to_string(), values.iter().map(|s| s.to_string()).collect());
     }
     pub fn get(&self, key: &str) -> Option<&Vec<String>> {
         self.data.get(key)

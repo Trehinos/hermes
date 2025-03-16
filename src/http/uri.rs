@@ -243,14 +243,28 @@ impl Uri {
     }
 
     pub fn authority(&self) -> String {
-        format!(
-            "{}@{}",
+        let user_info = format!(
+            "{}{}",
             self.authority
                 .user
                 .as_ref()
                 .map(|u| u.to_string())
                 .unwrap_or_default(),
-            self.authority.host
+            self.authority
+                .password
+                .as_ref()
+                .map(|p| format!(":{}", p))
+                .unwrap_or_default()
+        );
+
+        format!(
+            "{}{}{}",
+            both_or_none(&user_info, "@"),
+            self.authority.host,
+            self.authority
+                .port
+                .map(|p| format!(":{}", p))
+                .unwrap_or_default()
         )
     }
 

@@ -3,6 +3,7 @@ use crate::http::factory::{HttpRequest, HttpResponse};
 use crate::http::uri::Uri;
 use crate::http::{Headers, MessageTrait, Method, Request, Response, Version};
 use std::net::IpAddr;
+use std::rc::Rc;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
@@ -23,10 +24,15 @@ pub struct ServerConfiguration {
 }
 
 impl ServerConfiguration {
-    pub const DEFAULT_RESPONSE_HEADERS: &'static [(&'static str, &'static [&'static str])] =
-        &[("Server", &["Hermes v0.1.0"])];
-    pub const DEFAULT_REQUEST_HEADERS: &'static [(&'static str, &'static [&'static str])] =
-        &[("User-Agent", &["Hermes v0.1.0"])];
+    pub const DEFAULT_RESPONSE_HEADERS: &'static [(&'static str, &'static [&'static str])] = &[
+        ("Server", &["Hermes/0.1.0"]),
+        ("Connection", &["keep-alive"]),
+        ("Content-Type", &["charset=utf-8"]),
+    ];
+    pub const DEFAULT_REQUEST_HEADERS: &'static [(&'static str, &'static [&'static str])] = &[
+        ("User-Agent", &["Hermes/0.1.0"]),
+        ("Content-Type", &["charset=utf-8"]),
+    ];
 
     pub fn path_info(&self) -> String {
         self.request_uri.path.to_string()
@@ -70,18 +76,24 @@ pub trait MiddlewareTrait: Handler {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Middleware {
-    handle: fn(request: &ServerRequest) -> Response,
+    server: Rc<Server>,
+    handle: fn(server: &Server, request: &ServerRequest) -> Response,
     accept: fn(request: &ServerRequest) -> bool,
 }
 
 impl Middleware {
     pub fn new(
-        handle: fn(request: &ServerRequest) -> Response,
+        server: Rc<Server>,
+        handle: fn(server: &Server, request: &ServerRequest) -> Response,
         accept: fn(request: &ServerRequest) -> bool,
     ) -> Self {
-        Self { handle, accept }
+        Self {
+            server,
+            handle,
+            accept,
+        }
     }
 }
 
@@ -91,7 +103,7 @@ impl Handler for Middleware {
     }
 
     fn handle(&mut self, request: &ServerRequest) -> Response {
-        (self.handle)(request)
+        (self.handle)(&self.server, request)
     }
 }
 
@@ -141,10 +153,14 @@ impl Handler for Server {
             self.response
                 .not_implemented("None of the middleware accepted the request.")
         };
-        let headers = self.configuration.default_response_headers.merge_with(
+        let mut headers = self.configuration.default_response_headers.merge_with(
             &self
                 .response_headers
                 .merge_with(&response.headers().clone()),
+        );
+        headers.set(
+            "Content-Length",
+            &[&format!("{}", response.message.body.len())],
         );
         response = response.with_headers(headers);
         response

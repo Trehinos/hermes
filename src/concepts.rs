@@ -20,6 +20,25 @@ use std::collections::HashMap;
 /// ```
 pub type Dictionary<T> = HashMap<String, T>;
 
+#[cfg(doc)]
+use crate::http::{Request, Response, Message};
+
+/// A type alias for a `Vec` where the elements are boxed values of type `T`.
+///
+/// This type can be used as a shorthand for creating a vector that stores heap-allocated elements,
+/// which may be useful for avoiding copying large structures or **for polymorphism when using trait objects**.
+///
+/// # Examples
+///
+/// ```
+/// use hermes::concepts::BoxVec;
+/// use hermes::http::{MessageTrait};
+///
+/// let mut vec: BoxVec<dyn MessageTrait> = Vec::new();
+/// ```
+/// In this example, the vector `vec` accepts [Request], [Response] or [Message] objects.
+pub type BoxVec<T> = Vec<Box<T>>;
+
 /// Concatenates a string and a suffix if both are non-empty,
 /// otherwise returns an empty string.
 ///
