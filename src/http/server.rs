@@ -1,7 +1,10 @@
-use crate::concepts::{Dictionary, Value};
-use crate::http::factory::{HttpRequest, HttpResponse};
-use crate::http::uri::Uri;
-use crate::http::{Headers, MessageTrait, Method, Request, Response, Version};
+use crate::{
+    concepts::{Dictionary, Value},
+    http::{
+        Headers, MessageTrait, Method, Request, RequestFactory, Response, ResponseFactory, Uri,
+        Version,
+    },
+};
 use std::net::IpAddr;
 use std::rc::Rc;
 use std::time::SystemTime;
@@ -58,6 +61,19 @@ impl ServerRequest {
     pub fn request(&self) -> &Request {
         &self.http_request
     }
+    pub fn from(http_request: Request, configuration: ServerConfiguration) -> Self {
+        // TODO
+        Self {
+            http_request,
+            configuration,
+            query: Dictionary::new(),
+            parsed_body: Dictionary::new(),
+        }
+    }
+
+    pub fn method(&self) -> &Method {
+        &self.http_request.method
+    }
 }
 
 pub trait Handler {
@@ -112,19 +128,19 @@ impl MiddlewareTrait for Middleware {}
 #[derive(Debug)]
 pub struct Server {
     pub configuration: ServerConfiguration,
-    pub request: HttpRequest,
-    pub response: HttpResponse,
+    pub request: RequestFactory,
+    pub response: ResponseFactory,
     pub response_headers: Headers,
     middleware: Vec<Middleware>,
 }
 
 impl Server {
     pub fn new(configuration: ServerConfiguration) -> Self {
-        let request_builder = HttpRequest::new(
+        let request_builder = RequestFactory::new(
             configuration.http_version,
             configuration.default_request_headers.clone(),
         );
-        let response_builder = HttpResponse::new(
+        let response_builder = ResponseFactory::new(
             configuration.http_version,
             configuration.default_response_headers.clone(),
         );

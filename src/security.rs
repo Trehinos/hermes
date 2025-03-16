@@ -1,7 +1,7 @@
 use crate::{
     concepts::Parsable,
     http::{
-        AuthenticationScheme, Handler, Headers, HttpResponse, MiddlewareTrait, Response,
+        AuthenticationScheme, Handler, Headers, ResponseFactory, MiddlewareTrait, Response,
         ServerRequest, Uri, Version, WWWAuthenticate,
     },
     security::{
@@ -63,7 +63,7 @@ impl<U: User> Handler for Firewall<'_, U> {
         true
     }
     fn handle(&mut self, _: &ServerRequest) -> Response {
-        let builder = HttpResponse::version(Version::Http1_1);
+        let builder = ResponseFactory::version(Version::Http1_1);
         if let Some(r) = &self.redirect_path {
             return builder.temporary_redirect(Uri::parse(r).unwrap().1);
         }

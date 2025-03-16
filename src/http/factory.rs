@@ -4,12 +4,12 @@ use crate::http::{
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
-pub struct HttpRequest {
+pub struct RequestFactory {
     pub version: Version,
     pub default_headers: Headers,
 }
 
-impl HttpRequest {
+impl RequestFactory {
     pub fn new(version: Version, default_headers: Headers) -> Self {
         Self { version, default_headers }
     }
@@ -201,12 +201,12 @@ impl Display for WWWAuthenticate {
 }
 
 #[derive(Debug, Clone)]
-pub struct HttpResponse {
+pub struct ResponseFactory {
     pub version: Version,
     pub default_headers: Headers,
 }
 
-impl HttpResponse {
+impl ResponseFactory {
     pub fn new(version: Version, default_headers: Headers) -> Self {
         Self { version, default_headers }
     }

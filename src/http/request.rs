@@ -323,7 +323,7 @@ impl Display for Request {
             self.target,
             self.protocol_version()
         )?;
-        write!(f, "{}", self.message)
+        write!(f, "{}", self.message.raw())
     }
 }
 

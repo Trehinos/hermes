@@ -625,7 +625,7 @@ impl Display for Response {
             self.code(),
             self.reason()
         )?;
-        write!(f, "{}", self.message)
+        write!(f, "{}", self.message.raw())
     }
 }
 
