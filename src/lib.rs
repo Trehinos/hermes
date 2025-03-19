@@ -2,6 +2,8 @@ pub mod concepts;
 pub mod http;
 pub mod security;
 
+pub mod framework;
+
 #[cfg(test)]
 mod test_tdd {
     use crate::concepts::Parsable;
@@ -44,6 +46,6 @@ mod test_tdd {
         });
         let server_request = ServerRequest::from(request.clone(), server.configuration.clone());
         let response = server.handle(&server_request);
-        println!("Response: {}", response);
+        println!("Response:\n{}", response);
     }
 }

@@ -1,6 +1,7 @@
 use crate::concepts::{both_or_none, Parsable};
 use crate::http::request::Query;
 use nom::bytes::complete::{tag, take_till, take_until};
+use nom::bytes::take_while;
 use nom::character::anychar;
 use nom::combinator::opt;
 use nom::multi::fold_many0;
@@ -20,11 +21,7 @@ impl Display for Path {
             f,
             "{}{}",
             self.resource,
-            if let Some(p) = &self.path_info {
-                format!("/{}", p)
-            } else {
-                "".to_string()
-            }
+            self.path_info.as_deref().unwrap_or_default()
         )
     }
 }
@@ -43,10 +40,13 @@ impl Parsable for Path {
     where
         Self: Sized,
     {
+        use nom::Parser;
+
         let (input, path) = take_till(|c| c == '?' || c == '#' || c == '&')(input)?;
         if !path.contains('/') {
             return Ok((input, Self::new(path.to_string(), None)));
         }
+        let (path, starting_slashes) = take_while(|c| c == '/').parse(path)?;
 
         let parts = path.split('/').collect::<Vec<&str>>();
         let mut resource = "".to_string();
@@ -63,18 +63,25 @@ impl Parsable for Path {
                 if part.contains('.') {
                     filename = true;
                 }
-                resource = format!(
-                    "{}/{}",
-                    resource,
+                resource = if resource.is_empty() {
                     part.replace("%20", " ").replace("+", " ")
-                );
+                } else {
+                    format!(
+                        "{}/{}",
+                        resource,
+                        part.replace("%20", " ").replace("+", " ")
+                    )
+                };
             }
         }
-        Ok((input, Self::new(resource, path_info)))
+        Ok((
+            input,
+            Self::new(format!("{}{}", starting_slashes, resource), path_info),
+        ))
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Authority {
     pub host: String,
     pub user: Option<String>,
@@ -147,7 +154,6 @@ impl Parsable for Authority {
                 user = u;
                 password = ps;
             }
-            let (i, _) = tag("/")(i)?;
             input = i;
         } else {
             let (i, a) = take_till(|c| c == '?' || c == '#' || c == '&')(input)?;
@@ -184,14 +190,20 @@ impl Parsable for Uri {
         use nom::Parser;
 
         let mut input = input;
-        let mut scheme = Self::SCHEME_HTTP;
-        if input.contains("://") {
-            let (i, s) = take_until("://")(input)?;
+        let mut scheme = Self::SCHEME_NONE;
+        let mut authority = Authority::default();
+        if input.contains(":") {
+            let (i, s) = take_until(":")(input)?;
             scheme = s;
-            let (i, _) = tag("://")(i)?;
+            let (i, _) = tag(":")(i)?;
             input = i;
+            if i.starts_with("//") {
+                let (i, _) = tag("//")(i)?;
+                let (i, a) = Authority::parse(i)?;
+                authority = a;
+                input = i;
+            }
         }
-        let (input, authority) = Authority::parse(input)?;
         let (input, path) = Path::parse(input)?;
 
         let mut fragment = "";
@@ -220,6 +232,7 @@ impl Parsable for Uri {
 }
 
 impl Uri {
+    pub const SCHEME_NONE: &'static str = "";
     pub const SCHEME_HTTP: &'static str = "http";
     pub const SCHEME_HTTPS: &'static str = "https";
     pub const SCHEME_FTP: &'static str = "ftp";
@@ -279,12 +292,15 @@ impl Display for Uri {
         write!(
             f,
             "{}{}{}{}{}",
-            both_or_none(&self.scheme, "://"),
-            if path.resource.is_empty() {
-                self.authority()
-            } else {
-                both_or_none(&self.authority(), "/")
-            },
+            both_or_none(&self.scheme, ":"),
+            both_or_none(
+                "//",
+                &if path.resource.is_empty() {
+                    self.authority()
+                } else {
+                    both_or_none(&self.authority(), "/")
+                }
+            ),
             path,
             both_or_none("?", &self.query.to_string()),
             both_or_none("#", &self.fragment.clone().unwrap_or("".to_string())),
@@ -298,9 +314,9 @@ mod tests {
 
     #[test]
     fn test_parse_uri() {
-        let uri = "http://host";
+        let uri = "https://host";
         let uri = Uri::parse(uri).unwrap().1;
-        assert_eq!(uri.scheme, "http");
+        assert_eq!(uri.scheme, "https");
         assert_eq!(uri.authority.host, "host");
         assert_eq!(uri.authority.port, None);
         assert_eq!(uri.authority.user, None);
@@ -310,14 +326,47 @@ mod tests {
         assert_eq!(uri.query.to_string(), Query::new().to_string());
         assert_eq!(uri.fragment, None);
 
-        let uri = "http://user:pass@host:80/path/resource.ext/path_info?query#fragment";
+        let uri = "http:path";
+        let uri = Uri::parse(uri).unwrap().1;
+        assert_eq!(uri.scheme, "http");
+        assert_eq!(uri.authority.host, "");
+        assert_eq!(uri.authority.port, None);
+        assert_eq!(uri.authority.user, None);
+        assert_eq!(uri.authority.password, None);
+        assert_eq!(uri.path.resource, "path");
+        assert_eq!(uri.path.path_info, None);
+        assert_eq!(uri.query.to_string(), Query::new().to_string());
+        assert_eq!(uri.fragment, None);
+
+        let uri = "/path/to/somewhere";
+        let uri = Uri::parse(uri).unwrap().1;
+        assert_eq!(uri.scheme, Uri::SCHEME_NONE);
+        assert_eq!(uri.authority.host, "");
+        assert_eq!(uri.authority.port, None);
+        assert_eq!(uri.authority.user, None);
+        assert_eq!(uri.authority.password, None);
+        assert_eq!(uri.path.resource, "/path/to/somewhere");
+        assert_eq!(uri.path.path_info, None);
+        assert_eq!(uri.query.to_string(), Query::new().to_string());
+        assert_eq!(uri.fragment, None);
+
+        let uri = "http://user:pass@host:80//path/resource.ext/path_info?query#fragment";
         let uri = Uri::parse(uri).unwrap().1;
         assert_eq!(uri.scheme, "http");
         assert_eq!(uri.authority.host, "host");
         assert_eq!(uri.authority.port, Some(80));
         assert_eq!(uri.authority.user, Some("user".to_string()));
         assert_eq!(uri.authority.password, Some("pass".to_string()));
-        assert_eq!(uri.path.resource, "/path/resource.ext");
+        assert_eq!(uri.path.resource, "//path/resource.ext");
+        assert_eq!(uri.path.path_info, Some("/path_info".to_string()));
+        assert_eq!(uri.query.to_string(), "query=".to_string());
+        assert_eq!(uri.fragment, Some("fragment".to_string()));
+
+        let uri = "resource.ext/path_info?query#fragment";
+        let uri = Uri::parse(uri).unwrap().1;
+        assert_eq!(uri.scheme, Uri::SCHEME_NONE);
+        assert_eq!(uri.authority, Authority::default());
+        assert_eq!(uri.path.resource, "resource.ext");
         assert_eq!(uri.path.path_info, Some("/path_info".to_string()));
         assert_eq!(uri.query.to_string(), "query=".to_string());
         assert_eq!(uri.fragment, Some("fragment".to_string()));

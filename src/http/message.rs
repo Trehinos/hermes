@@ -64,7 +64,7 @@ impl Headers {
                 header_name.to_string(),
                 header_value
                     .trim()
-                    .split(';')
+                    .split(',')
                     .map(|s| s.trim().to_string())
                     .collect(),
             ),
@@ -118,13 +118,19 @@ impl Headers {
     }
     pub fn set(&mut self, key: &str, values: &[&str]) {
         self.data.remove(key);
-        self.data.insert(key.to_string(), values.iter().map(|s| s.to_string()).collect());
+        self.data.insert(
+            key.to_string(),
+            values.iter().map(|s| s.to_string()).collect(),
+        );
     }
     pub fn get(&self, key: &str) -> Option<&Vec<String>> {
         self.data.get(key)
     }
     pub fn get_line(&self, key: &str) -> Option<String> {
         self.get(key).map(|v| v.join(","))
+    }
+    pub fn get_value(&self, key: &str) -> Option<String> {
+        self.get(key).map(|v| v.join(",\n\t"))
     }
 }
 
@@ -133,7 +139,7 @@ impl Display for Headers {
         let s = self
             .data
             .keys()
-            .map(|key| format!("{}: {}", key, self.get_line(key).unwrap()))
+            .map(|key| format!("{}: {}", key, self.get_value(key).unwrap_or("".to_string())))
             .collect::<Vec<_>>()
             .join("\r\n");
 
@@ -362,6 +368,18 @@ mod parse_tests {
         }
     }
 
+    #[test]
+    fn test_header() {
+        let input = "Link: href=\"test_1.html\"; rel=\"next\",
+\thref=\"test_2.html\"; rel=\"prev\",
+\thref=\"test_3.html\"; rel=\"alternate\"";
+        let (_, headers) = Headers::parse(input).unwrap();
+        let header_value = headers.get_value("Link").unwrap();
+        assert_eq!(format!("Link: {}", header_value), input);
+        let header_value = headers.get_line("Link").unwrap();
+        assert_eq!(header_value, "href=\"test_1.html\"; rel=\"next\",href=\"test_2.html\"; rel=\"prev\",href=\"test_3.html\"; rel=\"alternate\"");
+    }
+    
     #[test]
     fn test_parse_header() {
         let input = "Content-Type: text/html";

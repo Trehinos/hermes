@@ -11,7 +11,10 @@ pub struct RequestFactory {
 
 impl RequestFactory {
     pub fn new(version: Version, default_headers: Headers) -> Self {
-        Self { version, default_headers }
+        Self {
+            version,
+            default_headers,
+        }
     }
 
     pub fn version(version: Version) -> Self {
@@ -41,6 +44,14 @@ impl RequestFactory {
 
 #[derive(Debug, Clone)]
 pub enum Redirection {
+    /// The 300 (Multiple Choices) status code indicates that the target resource has more than one representation,
+    /// each with its own specific location, and the user or user agent should select one of them.
+    /// The Location header field can be used to provide the URI for the preferred choice,
+    /// but the available choices are not limited to those in the response.
+    ///
+    /// The MultipleChoices variant accepts a list of possible URIs (`Vec<Uri>`) and an optional
+    /// preferred URI (`Option<Uri>`).
+    MultipleChoices(Vec<Uri>, Option<Uri>),
     /// The 301 (Moved Permanently) status code indicates that the target resource has been assigned
     /// a new permanent URI and any future references to this resource ought to use one of the enclosed URIs.
     /// The server is suggesting that a user agent with link-editing capability can permanently replace
@@ -90,6 +101,7 @@ pub enum Redirection {
 impl Redirection {
     pub fn to_status(&self) -> Status {
         match self {
+            Redirection::MultipleChoices(_, _) => Status::MultipleChoices,
             Redirection::MovedPermanently(_) => Status::MovedPermanently,
             Redirection::Found(_) => Status::Found,
             Redirection::SeeOther(_) => Status::SeeOther,
@@ -101,6 +113,9 @@ impl Redirection {
 
     pub fn get_uri(&self) -> &Uri {
         match self {
+            Redirection::MultipleChoices(uris, pref) => {
+                pref.as_ref().unwrap_or_else(|| uris.first().unwrap())
+            }
             Redirection::MovedPermanently(uri)
             | Redirection::Found(uri)
             | Redirection::SeeOther(uri)
@@ -116,6 +131,11 @@ impl Redirection {
         if let Redirection::NotModified(_, r_headers) = self {
             for (key, value) in r_headers.iter() {
                 headers.insert(key, value);
+            }
+        }
+        if let Redirection::MultipleChoices(uris, _) = self {
+            for uri in uris {
+                headers.insert("Link", &[format!("href=\"{}\"; rel=alternative", uri)]);
             }
         }
         headers
@@ -208,13 +228,16 @@ pub struct ResponseFactory {
 
 impl ResponseFactory {
     pub fn new(version: Version, default_headers: Headers) -> Self {
-        Self { version, default_headers }
+        Self {
+            version,
+            default_headers,
+        }
     }
 
     pub fn version(version: Version) -> Self {
         Self::new(version, Headers::new())
     }
-    
+
     pub fn with_status(&self, status: Status, headers: Headers) -> Response {
         Response {
             status,
@@ -236,6 +259,9 @@ impl ResponseFactory {
     }
     pub fn no_content(&self, headers: Headers) -> Response {
         self.with_status(Status::OK, headers)
+    }
+    pub fn multiple_choice(&self, uris: Vec<Uri>, preferred: Option<Uri>) -> Response {
+        self.redirect(Redirection::MultipleChoices(uris, preferred))
     }
     pub fn moved_permanently(&self, uri: Uri) -> Response {
         self.redirect(Redirection::MovedPermanently(uri))
@@ -264,9 +290,7 @@ impl ResponseFactory {
         self.with_status(Status::Forbidden, headers)
     }
     pub fn not_implemented(&self, message: &str) -> Response {
-        self.with_status(
-            Status::NotImplemented,
-            Headers::new(),
-        ).with_body(message)
+        self.with_status(Status::NotImplemented, Headers::new())
+            .with_body(message)
     }
 }

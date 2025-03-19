@@ -21,7 +21,7 @@ use std::collections::HashMap;
 pub type Dictionary<T> = HashMap<String, T>;
 
 #[cfg(doc)]
-use crate::http::{Request, Response, Message};
+use crate::http::{Message, Request, Response};
 
 /// A type alias for a `Vec` where the elements are boxed values of type `T`.
 ///
@@ -39,13 +39,13 @@ use crate::http::{Request, Response, Message};
 /// In this example, the vector `vec` accepts [Request], [Response] or [Message] objects.
 pub type BoxVec<T> = Vec<Box<T>>;
 
-/// Concatenates a string and a suffix if both are non-empty,
+/// Concatenates a prefix and a suffix if both are non-empty,
 /// otherwise returns an empty string.
 ///
 /// # Arguments
 ///
-/// * `str` - The main input string to be concatenated.
-/// * `suffix` - The string to be appended to the main string.
+/// * `prefix` - The start of the concatenated string.
+/// * `suffix` - The end of the concatenated string.
 ///
 /// # Returns
 ///
@@ -65,9 +65,9 @@ pub type BoxVec<T> = Vec<Box<T>>;
 /// assert_eq!(empty1, "");
 /// assert_eq!(appended, "prefixsuffix");
 /// ```
-pub fn both_or_none(str: &str, suffix: &str) -> String {
-    if !str.is_empty() && !suffix.is_empty() {
-        format!("{}{}", str, suffix)
+pub fn both_or_none(prefix: &str, suffix: &str) -> String {
+    if !(prefix.is_empty() || suffix.is_empty()) {
+        format!("{}{}", prefix, suffix)
     } else {
         "".to_string()
     }

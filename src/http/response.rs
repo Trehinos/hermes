@@ -48,6 +48,10 @@ pub enum Status {
     /// 304
     NotModified,
     /// 305
+    #[deprecated(
+        since = "0.1.0",
+        note = "See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status#305_use_proxy"
+    )]
     UseProxy,
     /// 307
     TemporaryRedirect,
