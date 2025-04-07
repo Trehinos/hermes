@@ -10,8 +10,5 @@ pub use request::*;
 mod response;
 pub use response::*;
 
-mod server;
-pub use server::*;
-
 mod factory;
 pub use factory::*;

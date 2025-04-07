@@ -54,18 +54,18 @@ pub enum Redirection {
     MultipleChoices(Vec<Uri>, Option<Uri>),
     /// The 301 (Moved Permanently) status code indicates that the target resource has been assigned
     /// a new permanent URI and any future references to this resource ought to use one of the enclosed URIs.
-    /// The server is suggesting that a user agent with link-editing capability can permanently replace
-    /// references to the target URI with one of the new references sent by the server.
+    /// The handler is suggesting that a user agent with link-editing capability can permanently replace
+    /// references to the target URI with one of the new references sent by the handler.
     ///
     /// However, this suggestion is usually ignored unless the user agent is actively editing references (e.g., engaged in authoring content),
-    /// the connection is secured, and the origin server is a trusted authority for the content being edited.
+    /// the connection is secured, and the origin handler is a trusted authority for the content being edited.
     MovedPermanently(Uri),
     /// The 302 (Found) status code indicates that the target resource resides temporarily under
     /// a different URI.
     /// Since the redirection might be altered on occasion, the client ought to continue to use
     /// the target URI for future requests.
     Found(Uri),
-    /// The 303 (See Other) status code indicates that the server is redirecting the user agent to
+    /// The 303 (See Other) status code indicates that the handler is redirecting the user agent to
     /// a different resource, as indicated by a URI in the Location header field, which is intended
     /// to provide an indirect response to the original request.
     ///
@@ -76,10 +76,10 @@ pub enum Redirection {
     SeeOther(Uri),
     /// The 304 (Not Modified) status code indicates that a conditional GET or HEAD request has been received
     /// and would have resulted in a 200 (OK) response if it were not for the fact that the condition evaluated to false.
-    /// In other words, there is no need for the server to transfer a representation of the target resource
+    /// In other words, there is no need for the handler to transfer a representation of the target resource
     /// because the request indicates that the client, which made the request conditional,
     /// already has a valid representation;
-    /// the server is therefore redirecting the client to make use of that stored representation as if
+    /// the handler is therefore redirecting the client to make use of that stored representation as if
     /// it were the content of a 200 (OK) response.
     NotModified(Uri, Headers),
     /// The 307 (Temporary Redirect) status code indicates that the target resource resides temporarily under
@@ -90,10 +90,10 @@ pub enum Redirection {
     /// The 308 (Permanent Redirect) status code indicates that the target resource has been assigned a new permanent
     /// URI and any future references to this resource ought to use one of the enclosed URIs.
     ///
-    /// The server is suggesting that a user agent with link-editing capability can permanently replace
-    /// references to the target URI with one of the new references sent by the server.
+    /// The handler is suggesting that a user agent with link-editing capability can permanently replace
+    /// references to the target URI with one of the new references sent by the handler.
     /// However, this suggestion is usually ignored unless the user agent is actively editing references
-    /// (e.g., engaged in authoring content), the connection is secured, and the origin server is a trusted
+    /// (e.g., engaged in authoring content), the connection is secured, and the origin handler is a trusted
     /// authority for the content being edited.
     PermanentRedirect(Uri),
 }

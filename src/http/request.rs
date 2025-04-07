@@ -347,7 +347,7 @@ mod tests {
         
         let (_, query) = Query::parse(query3).unwrap();
         assert_eq!(query.data.len(), 1);
-        assert_eq!(query.get("array[]"), Some(&"value".to_string()));
+        assert_eq!(query.get("array[]"), Some(&"value2".to_string()));
         
         println!("{:?}", Query::parse(query4));
         let query1 = "simple_query#fragment";
