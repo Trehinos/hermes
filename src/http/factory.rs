@@ -294,3 +294,37 @@ impl ResponseFactory {
             .with_body(message)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::http::{Authority, Path, Query};
+    use crate::concepts::Parsable;
+    #[test]
+    fn test_request_factory() {
+        let factory = RequestFactory::version(Version::Http1_1);
+        let uri = Uri::new("http".into(), Authority::new("host".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let req = factory.get(uri.clone(), Headers::new());
+        assert_eq!(req.method, Method::Get);
+        let req2 = factory.post(uri.clone(), Headers::new(), "b");
+        assert_eq!(req2.method, Method::Post);
+    }
+
+    #[test]
+    fn test_redirection_and_response_factory() {
+        let factory = ResponseFactory::version(Version::Http1_1);
+        let target = Uri::new("http".into(), Authority::new("host".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let resp = factory.moved_permanently(target.clone());
+        assert_eq!(resp.status, Status::MovedPermanently);
+        assert!(resp.message.raw().contains("http://host//"));
+
+        let resp = factory.ok(Headers::new(), "body".to_string());
+        assert_eq!(resp.status, Status::OK);
+        assert_eq!(resp.body(), "body");
+
+        let www = WWWAuthenticate { scheme: AuthenticationScheme::Basic, realm: Some("r".to_string()), charset: None };
+        let resp = factory.unauthorized(www, Headers::new());
+        assert_eq!(resp.status, Status::Unauthorized);
+    }
+}
