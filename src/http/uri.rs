@@ -1,6 +1,7 @@
 //! Types for parsing and representing URIs.
 use crate::concepts::{both_or_none, Parsable};
 use crate::http::request::Query;
+use crate::http::ParseError;
 use nom::bytes::complete::{tag, take_till, take_until};
 use nom::bytes::take_while;
 use nom::character::anychar;
@@ -112,28 +113,26 @@ impl Authority {
 
 impl Authority {
     /// Parse `user:password` information from an authority string.
-    pub fn parse_user_info(input: &str) -> IResult<&str, (Option<String>, Option<String>)> {
-        let user: Option<String>;
-        let mut password: Option<String> = None;
-        if input.contains(":") {
-            let (p, u) = take_until(":")(input)?;
-            let (p, _) = tag(":")(p)?;
-            user = Some(u.to_string());
-            password = Some(p.to_string());
+    pub fn parse_user_info(
+        input: &str,
+    ) -> Result<(&str, (Option<String>, Option<String>)), ParseError> {
+        if let Some((u, p)) = input.split_once(':') {
+            Ok(("", (Some(u.to_string()), Some(p.to_string()))))
         } else {
-            user = Some(input.to_string());
+            Ok(("", (Some(input.to_string()), None)))
         }
-        Ok(("", (user, password)))
     }
 
     /// Parse the host and optional port from an authority part.
-    pub fn parse_host(input: &str) -> IResult<&str, (String, Option<u16>)> {
+    pub fn parse_host(input: &str) -> Result<(&str, (String, Option<u16>)), ParseError> {
         let host: String;
         let mut port: Option<u16> = None;
-        if input.contains(":") {
-            let (p, h) = take_until(":")(input)?;
+        if let Some((h, p)) = input.split_once(':') {
             host = h.to_string();
-            port = Some(p.parse::<u16>().unwrap_or(80));
+            port = Some(
+                p.parse::<u16>()
+                    .map_err(|_| ParseError::InvalidPort(p.to_string()))?,
+            );
         } else {
             host = input.to_string();
         }
@@ -158,7 +157,8 @@ impl Parsable for Authority {
                 let (host_part, user_info) = take_until("@")(authority)?;
                 let (host_part, _) = tag("@")(host_part)?;
                 authority = host_part;
-                let (_, (u, ps)) = Self::parse_user_info(user_info)?;
+                let (_, (u, ps)) = Self::parse_user_info(user_info)
+                    .map_err(|_| nom::Err::Error(nom::error::Error::new(user_info, nom::error::ErrorKind::Fail)))?;
                 user = u;
                 password = ps;
             }
@@ -168,7 +168,8 @@ impl Parsable for Authority {
             input = i;
             authority = a;
         }
-        let (_, (host, port)) = Self::parse_host(authority)?;
+        let (_, (host, port)) = Self::parse_host(authority)
+            .map_err(|_| nom::Err::Error(nom::error::Error::new(authority, nom::error::ErrorKind::Fail)))?;
         Ok((
             input,
             Self {
@@ -408,4 +409,10 @@ mod tests {
         assert_eq!(uri.path().to_string(), path.to_string());
         assert!(uri.to_string().starts_with("http://u:p@host:8080"));
     }
+
+    #[test]
+    fn test_parse_host_error() {
+        let err = Authority::parse_host("host:abc").unwrap_err();
+        assert_eq!(err, ParseError::InvalidPort("abc".to_string()));
     }
+}
