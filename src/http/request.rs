@@ -1,3 +1,4 @@
+//! Structures and utilities for HTTP requests.
 use crate::concepts::{Dictionary, Parsable};
 use crate::http::{Headers, Message, MessageTrait, Uri, Version};
 use nom::bytes::complete::{tag, take_until};
@@ -7,6 +8,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// Standard HTTP request methods.
 pub enum Method {
     Get,
     Post,
@@ -65,6 +67,7 @@ impl Display for Method {
 
 impl Method {
 
+    /// Returns `true` if requests with this method usually contain a body.
     pub fn request_has_body(&self) -> bool {
         matches!(
             self,
@@ -72,6 +75,7 @@ impl Method {
         )
     }
 
+    /// Returns `true` if responses to this method are expected to contain a body.
     pub fn response_has_body(&self) -> bool {
         matches!(
             self,
@@ -85,18 +89,22 @@ impl Method {
         )
     }
 
+    /// Checks whether the method is defined as safe by the HTTP specification.
     pub fn is_safe(&self) -> bool {
         matches!(
             self,
             Method::Get | Method::Head | Method::Options | Method::Trace
         )
     }
+    /// Indicates if repeated requests using this method are idempotent.
     pub fn is_idempotent(&self) -> bool {
         self.is_safe() || matches!(self, Method::Put | Method::Delete)
     }
+    /// Indicates if responses to this method can be cached.
     pub fn is_cacheable(&self) -> bool {
         matches!(self, Method::Get | Method::Head | Method::Post | Method::Patch)
     }
+    /// Returns `true` if browsers commonly use this method in HTML forms.
     pub fn is_html_compatible(&self) -> bool {
         matches!(self, Method::Get | Method::Post)
     }
@@ -134,27 +142,34 @@ impl Parsable for Query {
 }
 
 impl Query {
+    /// Create an empty query string representation.
     pub fn new() -> Self {
         Self {
             data: HashMap::new(),
         }
     }
+    /// Append a key/value pair to the query.
     pub fn add(&mut self, key: &str, value: &str) {
         self.data.insert(key.to_string(), value.to_string());
     }
+    /// Replace any existing value for `key` with `value`.
     pub fn set(&mut self, key: &str, value: &str) {
         self.data.remove(key);
         self.data.insert(key.to_string(), value.to_string());
     }
+    /// Remove the value associated with `key`.
     pub fn remove(&mut self, key: &str) {
         self.data.remove(key);
     }
+    /// Get a reference to the stored value for `key` if any.
     pub fn get(&self, key: &str) -> Option<&String> {
         self.data.get(key)
     }
+    /// Return the value for `key` as an owned string.
     pub fn get_line(&self, key: &str) -> Option<String> {
         self.get(key).map(|v| v.to_string())
     }
+    /// Returns `true` if the query contains `key`.
     pub fn has(&self, key: &str) -> bool {
         self.data.contains_key(key)
     }
@@ -170,6 +185,7 @@ impl Display for Query {
     }
 }
 
+/// Behaviour shared by HTTP request types.
 pub trait RequestTrait: MessageTrait {
     fn get_target(&self) -> String;
     fn get_method(&self) -> Method;
@@ -183,6 +199,7 @@ pub trait RequestTrait: MessageTrait {
 }
 
 #[derive(Debug, Clone)]
+/// Representation of an HTTP request message.
 pub struct Request {
     pub method: Method,
     pub target: Uri,

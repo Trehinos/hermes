@@ -1,3 +1,4 @@
+//! Structures and helpers for HTTP responses.
 use crate::concepts::Parsable;
 use crate::http::message::Headers;
 use crate::http::{Message, MessageTrait, Version};
@@ -8,6 +9,7 @@ use nom::IResult;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// HTTP status codes and reasons recognized by the library.
 pub enum Status {
     /// 100
     Continue,
@@ -145,6 +147,7 @@ pub enum Status {
 }
 
 impl Status {
+    /// Return the numeric HTTP status code.
     pub fn to_code(&self) -> u16 {
         match self {
             Self::Continue => 100,
@@ -213,6 +216,7 @@ impl Status {
         }
     }
 
+    /// Convert a numeric code to a [`Status`] variant.
     pub fn from_code(code: u16) -> Self {
         match code {
             100 => Self::Continue,
@@ -294,6 +298,7 @@ impl Status {
         }
     }
 
+    /// Convert a reason phrase to a [`Status`] variant.
     pub fn from_reason(reason: &str) -> Self {
         match reason {
             "Continue" => Self::Continue,
@@ -367,6 +372,7 @@ impl Status {
         }
     }
 
+    /// Return the canonical reason phrase for this status.
     pub fn to_reason(&self) -> &str {
         match self {
             Self::Continue => "Continue",
@@ -435,22 +441,27 @@ impl Status {
         }
     }
 
+    /// Check if the status code is within the informational range (1xx).
     pub fn is_informational(&self) -> bool {
         (100..=199).contains(&self.to_code())
     }
 
+    /// Check if the status represents success (2xx).
     pub fn is_successful(&self) -> bool {
         (200..=299).contains(&self.to_code())
     }
 
+    /// Check if the status is a redirection code (3xx).
     pub fn is_redirection(&self) -> bool {
         (300..=399).contains(&self.to_code())
     }
 
+    /// Check if the status is a client error (4xx).
     pub fn is_client_error(&self) -> bool {
         (400..=499).contains(&self.to_code())
     }
 
+    /// Check if the status is a server error (5xx).
     pub fn is_server_error(&self) -> bool {
         (500..=599).contains(&self.to_code())
     }
@@ -495,6 +506,7 @@ impl Parsable for Status {
 
 
 
+/// Behaviour shared by HTTP response types.
 pub trait ResponseTrait: MessageTrait {
     fn status(&self) -> Status;
     fn code(&self) -> u16 {

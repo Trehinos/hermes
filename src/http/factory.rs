@@ -1,15 +1,18 @@
+//! Factories for building HTTP requests and responses.
 use crate::http::{
     Headers, Message, MessageTrait, Method, Request, Response, Status, Uri, Version,
 };
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
+/// Helper for constructing [`Request`] instances with preset defaults.
 pub struct RequestFactory {
     pub version: Version,
     pub default_headers: Headers,
 }
 
 impl RequestFactory {
+    /// Create a new factory using the given HTTP version and default headers.
     pub fn new(version: Version, default_headers: Headers) -> Self {
         Self {
             version,
@@ -17,10 +20,12 @@ impl RequestFactory {
         }
     }
 
+    /// Shorthand for creating a factory with empty default headers.
     pub fn version(version: Version) -> Self {
         Self::new(version, Headers::new())
     }
 
+    /// Build a [`Request`] with the provided method, target and data.
     pub fn build(&self, method: Method, target: Uri, headers: Headers, body: &str) -> Request {
         Request {
             method,
@@ -33,10 +38,12 @@ impl RequestFactory {
         }
     }
 
+    /// Build a GET request to `target` using `headers`.
     pub fn get(&self, target: Uri, headers: Headers) -> Request {
         self.build(Method::Get, target, headers, "")
     }
 
+    /// Build a POST request to `target` using `headers` and `body`.
     pub fn post(&self, target: Uri, headers: Headers, body: &str) -> Request {
         self.build(Method::Post, target, headers, body)
     }
@@ -221,12 +228,14 @@ impl Display for WWWAuthenticate {
 }
 
 #[derive(Debug, Clone)]
+/// Helper for constructing [`Response`] instances with preset defaults.
 pub struct ResponseFactory {
     pub version: Version,
     pub default_headers: Headers,
 }
 
 impl ResponseFactory {
+    /// Create a new factory using the given HTTP version and default headers.
     pub fn new(version: Version, default_headers: Headers) -> Self {
         Self {
             version,
@@ -234,10 +243,12 @@ impl ResponseFactory {
         }
     }
 
+    /// Shorthand for creating a factory with empty default headers.
     pub fn version(version: Version) -> Self {
         Self::new(version, Headers::new())
     }
 
+    /// Construct a [`Response`] with the supplied status and headers.
     pub fn with_status(&self, status: Status, headers: Headers) -> Response {
         Response {
             status,
@@ -248,47 +259,60 @@ impl ResponseFactory {
             },
         }
     }
+    /// Build a redirection response with `Location` header.
     pub fn redirect(&self, redirection: Redirection) -> Response {
         let mut headers = Headers::new();
         let (status, target) = redirection.to_pair();
         headers.insert("Location", &[target.to_string()]);
         self.with_status(status, headers)
     }
+    /// Convenience helper to return a 200 response.
     pub fn ok(&self, headers: Headers, body: String) -> Response {
         self.with_status(Status::OK, headers).with_body(&body)
     }
+    /// Generate a 204-like empty response.
     pub fn no_content(&self, headers: Headers) -> Response {
         self.with_status(Status::OK, headers)
     }
+    /// Create a 300 Multiple Choices response.
     pub fn multiple_choice(&self, uris: Vec<Uri>, preferred: Option<Uri>) -> Response {
         self.redirect(Redirection::MultipleChoices(uris, preferred))
     }
+    /// Create a 301 response pointing permanently to `uri`.
     pub fn moved_permanently(&self, uri: Uri) -> Response {
         self.redirect(Redirection::MovedPermanently(uri))
     }
+    /// Create a 302 response pointing to `uri`.
     pub fn found(&self, uri: Uri) -> Response {
         self.redirect(Redirection::Found(uri))
     }
+    /// Create a 303 response pointing to `uri`.
     pub fn see_other(&self, uri: Uri) -> Response {
         self.redirect(Redirection::SeeOther(uri))
     }
+    /// Create a 304 response using headers from `headers`.
     pub fn not_modified(&self, uri: Uri, headers: Headers) -> Response {
         self.redirect(Redirection::NotModified(uri, headers))
     }
+    /// Create a 307 Temporary Redirect to `uri`.
     pub fn temporary_redirect(&self, uri: Uri) -> Response {
         self.redirect(Redirection::TemporaryRedirect(uri))
     }
+    /// Create a 308 Permanent Redirect to `uri`.
     pub fn permanent_redirect(&self, uri: Uri) -> Response {
         self.redirect(Redirection::PermanentRedirect(uri))
     }
+    /// Return a 401 Unauthorized response with `WWW-Authenticate` header.
     pub fn unauthorized(&self, www_authenticate: WWWAuthenticate, headers: Headers) -> Response {
         let mut headers = headers;
         headers.add("WWW-Authenticate", &www_authenticate.to_string());
         self.with_status(Status::Unauthorized, headers)
     }
+    /// Return a 403 Forbidden response.
     pub fn forbidden(&self, headers: Headers) -> Response {
         self.with_status(Status::Forbidden, headers)
     }
+    /// Return a 501 Not Implemented response with a body.
     pub fn not_implemented(&self, message: &str) -> Response {
         self.with_status(Status::NotImplemented, Headers::new())
             .with_body(message)

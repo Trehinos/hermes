@@ -1,3 +1,4 @@
+//! Types for parsing and representing URIs.
 use crate::concepts::{both_or_none, Parsable};
 use crate::http::request::Query;
 use nom::bytes::complete::{tag, take_till, take_until};
@@ -10,6 +11,7 @@ use nom::IResult;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Default, Clone)]
+/// Represents the resource path and optional extra path info of a URI.
 pub struct Path {
     pub resource: String,
     pub path_info: Option<String>,
@@ -27,6 +29,7 @@ impl Display for Path {
 }
 
 impl Path {
+    /// Create a new [`Path`] with the provided resource and optional path info.
     pub fn new(resource: String, path_info: Option<String>) -> Self {
         Self {
             resource,
@@ -82,6 +85,7 @@ impl Parsable for Path {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+/// User information, host and port part of a URI.
 pub struct Authority {
     pub host: String,
     pub user: Option<String>,
@@ -90,6 +94,7 @@ pub struct Authority {
 }
 
 impl Authority {
+    /// Create a new [`Authority`] instance from its components.
     pub fn new(
         host: String,
         user: Option<String>,
@@ -106,6 +111,7 @@ impl Authority {
 }
 
 impl Authority {
+    /// Parse `user:password` information from an authority string.
     pub fn parse_user_info(input: &str) -> IResult<&str, (Option<String>, Option<String>)> {
         let user: Option<String>;
         let mut password: Option<String> = None;
@@ -120,6 +126,7 @@ impl Authority {
         Ok(("", (user, password)))
     }
 
+    /// Parse the host and optional port from an authority part.
     pub fn parse_host(input: &str) -> IResult<&str, (String, Option<u16>)> {
         let host: String;
         let mut port: Option<u16> = None;
@@ -135,6 +142,7 @@ impl Authority {
 }
 
 impl Parsable for Authority {
+    /// Parse the authority component of a URI.
     fn parse(input: &str) -> IResult<&str, Self>
     where
         Self: Sized,
@@ -174,6 +182,7 @@ impl Parsable for Authority {
 }
 
 #[derive(Debug, Default, Clone)]
+/// A fully parsed Uniform Resource Identifier.
 pub struct Uri {
     pub scheme: String,
     pub authority: Authority,
@@ -183,6 +192,7 @@ pub struct Uri {
 }
 
 impl Parsable for Uri {
+    /// Parse a URI from a string slice.
     fn parse(input: &str) -> IResult<&str, Self>
     where
         Self: Sized,
@@ -239,6 +249,7 @@ impl Uri {
     pub const SCHEME_SSH: &'static str = "ssh";
 
     #[allow(clippy::too_many_arguments)]
+    /// Construct a new [`Uri`] from its components.
     pub fn new(
         scheme: String,
         authority: Authority,
@@ -255,6 +266,7 @@ impl Uri {
         }
     }
 
+    /// Format the authority component back to a string.
     pub fn authority(&self) -> String {
         let user_info = format!(
             "{}{}",
@@ -281,6 +293,7 @@ impl Uri {
         )
     }
 
+    /// Return a clone of the [`Path`] component.
     pub fn path(&self) -> Path {
         self.path.clone()
     }

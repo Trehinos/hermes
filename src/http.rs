@@ -1,3 +1,4 @@
+//! High level HTTP types and re-exports.
 mod message;
 pub use message::*;
 
