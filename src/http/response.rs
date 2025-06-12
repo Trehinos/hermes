@@ -464,7 +464,9 @@ impl Parsable for Status {
         use nom::Parser;
 
         let (input, code) = digit1(input)?;
-        let code = code.parse::<u16>().unwrap();
+        let code = code
+            .parse::<u16>()
+            .map_err(|_| nom::Err::Failure(nom::error::Error::new(code, nom::error::ErrorKind::Fail)))?;
         let from_code = Status::from_code(code);
         let mut reason = None;
         let (mut input, _) = space0(input)?;

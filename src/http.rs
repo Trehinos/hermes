@@ -13,3 +13,6 @@ pub use response::*;
 
 mod factory;
 pub use factory::*;
+
+mod error;
+pub use error::*;

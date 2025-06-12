@@ -1,9 +1,9 @@
 //! Utilities for HTTP messages and headers.
 use crate::concepts::Parsable;
-use nom::bytes::complete::{tag, take_until, take_until1};
-use nom::character::complete::{digit1, multispace0};
-use nom::sequence::terminated;
-use nom::{IResult, Parser};
+use crate::http::ParseError;
+use nom::bytes::complete::{tag, take_until1};
+use nom::character::complete::digit1;
+use nom::IResult;
 use std::collections::HashMap;
 use std::fmt::Display;
 
@@ -45,7 +45,12 @@ impl Parsable for Version {
             ("1", "1") => Version::Http1_1,
             ("2", "0") => Version::Http2_0,
             ("3", "0") => Version::Http3_0,
-            _ => panic!("Invalid HTTP version: {}.{}", major, minor),
+            _ => {
+                return Err(nom::Err::Failure(nom::error::Error::new(
+                    input,
+                    nom::error::ErrorKind::Fail,
+                )));
+            }
         };
         Ok((input, version))
     }
@@ -58,19 +63,17 @@ pub struct Headers {
 
 impl Headers {
     /// Parse a single header line into a key and list of values.
-    pub fn parse_header(input: &str) -> IResult<&str, (String, Vec<String>)> {
-        let (header_value, header_name) = terminated(take_until(":"), tag(":")).parse(input)?;
-        Ok((
-            "",
-            (
-                header_name.to_string(),
-                header_value
-                    .trim()
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .collect(),
-            ),
-        ))
+    pub fn parse_header(input: &str) -> Result<(&str, (String, Vec<String>)), ParseError> {
+        if let Some((name, rest)) = input.split_once(':') {
+            let values = rest
+                .trim()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+            Ok(("", (name.trim().to_string(), values)))
+        } else {
+            Err(ParseError::InvalidHeaderFormat(input.to_string()))
+        }
     }
     /// Create an empty `Headers` map.
     pub fn new() -> Self {
@@ -179,7 +182,8 @@ impl Parsable for Headers {
             if line.is_empty() {
                 continue;
             }
-            let (_, (name, value)) = Self::parse_header(line)?;
+            let (_, (name, value)) = Self::parse_header(line)
+                .map_err(|_| nom::Err::Error(nom::error::Error::new(line, nom::error::ErrorKind::Fail)))?;
             headers.insert(name, value);
         }
         Ok((input, Self { data: headers }))
@@ -247,11 +251,12 @@ impl Message {
     }
 
     /// Parse a protocol version at the start of `input` if present.
-    pub fn parse_version(input: &str) -> IResult<&str, Option<Version>> {
+    pub fn parse_version(input: &str) -> Result<(&str, Option<Version>), ParseError> {
         let mut input = input;
         if input.starts_with("HTTP") {
-            let (i, version) = Version::parse(input)?;
-            let (i, _) = multispace0(i)?;
+            let (i, version) = Version::parse(input)
+                .map_err(|_| ParseError::InvalidHttpVersion(input.to_string()))?;
+            let i = i.trim_start();
             input = i;
             Ok((input, Some(version)))
         } else {
@@ -270,7 +275,8 @@ impl Parsable for Message {
     where
         Self: Sized,
     {
-        let (input, version) = Self::parse_version(input)?;
+        let (input, version) =
+            Self::parse_version(input).map_err(|_| nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail)))?;
         let (body, headers) = Headers::parse(input)?;
 
         Ok((
@@ -436,5 +442,17 @@ mod tests {
         assert!(msg.raw().contains("A: 1"));
         assert!(msg.raw().contains("B: 2"));
         assert!(msg.to_string().starts_with("HTTP/1.1"));
+    }
+
+    #[test]
+    fn test_parse_header_error() {
+        let err = Headers::parse_header("BadHeader").unwrap_err();
+        assert_eq!(err, ParseError::InvalidHeaderFormat("BadHeader".to_string()));
+    }
+
+    #[test]
+    fn test_parse_version_error() {
+        let err = Message::parse_version("HTTP/9.9").unwrap_err();
+        assert_eq!(err, ParseError::InvalidHttpVersion("HTTP/9.9".to_string()));
     }
 }
