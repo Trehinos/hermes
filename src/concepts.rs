@@ -144,3 +144,24 @@ pub enum Value {
     Array(Vec<Value>),
     Dictionary(Dictionary<Value>),
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_both_or_none() {
+        assert_eq!(both_or_none("pre", "suf"), "presuf");
+        assert_eq!(both_or_none("pre", ""), "");
+        assert_eq!(both_or_none("", "suf"), "");
+    }
+
+    #[test]
+    fn test_identifier() {
+        let (rest, id) = identifier("name1 rest").unwrap();
+        assert_eq!(rest, " rest");
+        assert_eq!(id, "name1");
+        let (rest, id) = identifier("_id").unwrap();
+        assert_eq!(rest, "");
+        assert_eq!(id, "_id");
+    }
+}

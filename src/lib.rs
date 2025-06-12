@@ -2,7 +2,7 @@ pub mod concepts;
 pub mod http;
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::concepts::Parsable;
     use crate::http::{
         MessageTrait, Request,

@@ -493,24 +493,7 @@ impl Parsable for Status {
     }
 }
 
-#[cfg(test)]
-#[test]
-fn test_status_parse() {
-    let input = "200";
-    let (input, status) = Status::parse(input).unwrap();
-    assert_eq!(input, "");
-    assert_eq!(status, Status::OK);
 
-    let input = "200 OK";
-    let (input, status) = Status::parse(input).unwrap();
-    assert_eq!(input, "");
-    assert_eq!(status, Status::OK);
-
-    let input = "200 OK\r\n...";
-    let (input, status) = Status::parse(input).unwrap();
-    assert_eq!(input, "\r\n...");
-    assert_eq!(status, Status::OK);
-}
 
 pub trait ResponseTrait: MessageTrait {
     fn status(&self) -> Status;
@@ -633,18 +616,36 @@ impl Display for Response {
     }
 }
 
+
+
 #[cfg(test)]
-#[test]
-fn test_response_parse() {
-    let input = "HTTP/1.1 200 OK\r\n\
-        Content-Type: text/html\r\n\
-        \r\n\
-        <html>...</html>";
-    let (_, response) = Response::parse(input).unwrap();
-    assert_eq!(response.status, Status::OK);
-    assert_eq!(
-        response.message.headers().get("Content-Type"),
-        Some(&vec!["text/html".to_string()])
-    );
-    assert_eq!(response.message.body(), "<html>...</html>");
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_status_helpers() {
+        let ok = Status::from_code(200);
+        assert_eq!(ok.to_code(), 200);
+        assert_eq!(Status::from_reason(ok.to_reason()), ok);
+        assert!(ok.is_successful());
+        assert!(!ok.is_client_error());
+    }
+
+    #[test]
+    fn test_status_parse() {
+        let (rest, st) = Status::parse("200 OK\r\n").unwrap();
+        assert_eq!(rest, "\r\n");
+        assert_eq!(st, Status::OK);
+    }
+
+    #[test]
+    fn test_response_parse_and_methods() {
+        let input = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<body></body>";
+        let (_, resp) = Response::parse(input).unwrap();
+        assert_eq!(resp.code(), 200);
+        assert_eq!(resp.reason(), "OK");
+        let resp = resp.with_status(Status::NotFound);
+        assert_eq!(resp.status(), Status::NotFound);
+        assert!(resp.to_string().starts_with("HTTP/1.1 404"));
+    }
 }

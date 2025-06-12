@@ -383,4 +383,16 @@ mod tests {
         assert_eq!(uri.query.to_string(), Query::new().to_string());
         assert_eq!(uri.fragment, None);
     }
-}
+    #[test]
+    fn test_path_and_authority_display() {
+        let path = Path::new("/index.html".to_string(), Some("/info".to_string()));
+        assert_eq!(path.to_string(), "/index.html/info");
+        let authority = Authority::new("host".to_string(), Some("u".to_string()), Some("p".to_string()), Some(8080));
+        assert_eq!(Authority::parse_user_info("user:pass").unwrap().1, (Some("user".to_string()), Some("pass".to_string())));
+        assert_eq!(Authority::parse_host("host:80").unwrap().1, ("host".to_string(), Some(80)));
+        let uri = Uri::new("http".to_string(), authority.clone(), path.clone(), Query::new(), Some("frag".to_string()));
+        assert_eq!(uri.authority(), "u:p@host:8080");
+        assert_eq!(uri.path().to_string(), path.to_string());
+        assert!(uri.to_string().starts_with("http://u:p@host:8080"));
+    }
+    }

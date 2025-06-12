@@ -343,6 +343,7 @@ impl Display for Request {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::http::{Authority, Path};
     #[test]
     fn test_parse_query() {
         let query1 = "simple_query";
@@ -388,5 +389,51 @@ mod tests {
             \r\nvalue=v";
         let (_, request) = Request::parse(request_str).unwrap();
         println!("{:#?}", request);
+    }
+    #[test]
+    fn test_method_properties() {
+        for (s, m) in [("GET", Method::Get), ("POST", Method::Post)] {
+            assert_eq!(Method::parse(s).unwrap().1, m);
+            assert!(m.to_string().contains(s));
+        }
+        assert!(Method::Post.request_has_body());
+        assert!(Method::Get.response_has_body());
+        assert!(Method::Get.is_safe());
+        assert!(Method::Put.is_idempotent());
+        assert!(Method::Get.is_cacheable());
+        assert!(Method::Post.is_html_compatible());
+    }
+
+    #[test]
+    fn test_query_methods() {
+        let mut q = Query::new();
+        q.add("a", "1");
+        assert_eq!(q.get_line("a"), Some("1".to_string()));
+        assert!(q.has("a"));
+        q.set("a", "2");
+        assert_eq!(q.get("a"), Some(&"2".to_string()));
+        q.remove("a");
+        assert!(!q.has("a"));
+        q.add("x", "1");
+        q.add("y", "2");
+        assert!(q.to_string().contains("x=1"));
+    }
+
+    #[test]
+    fn test_request_methods() {
+        let uri = Uri::new("http".into(), Authority::new("host".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let req = Request {
+            method: Method::Get,
+            target: uri.clone(),
+            message: Message::v1_1(Headers::from(&[("Host", &["host"])]), String::new()),
+        };
+        assert!(req.get_target().starts_with("http://host"));
+        assert_eq!(req.get_method(), Method::Get);
+        let req2 = req.clone().with_method(Method::Post);
+        assert_eq!(req2.get_method(), Method::Post);
+        let uri2 = Uri::new("http".into(), Authority::new("example".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let req3 = req2.with_uri(uri2, true);
+        assert_eq!(req3.get_header_line("Host"), Some("example".to_string()));
+        assert!(req3.get_target().contains("http://example"));
     }
 }
