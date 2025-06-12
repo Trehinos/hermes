@@ -64,15 +64,27 @@ impl Display for Method {
 }
 
 impl Method {
-    pub fn has_body(&self) -> bool {
-        matches!(self, Method::Post | Method::Put | Method::Connect)
+
+    pub fn request_has_body(&self) -> bool {
+        matches!(
+            self,
+            Method::Post | Method::Delete | Method::Patch | Method::Put
+        )
     }
+
     pub fn response_has_body(&self) -> bool {
         matches!(
             self,
-            Method::Get | Method::Post | Method::Connect | Method::Options
+            Method::Get
+                | Method::Post
+                | Method::Put
+                | Method::Delete
+                | Method::Patch
+                | Method::Options
+                | Method::Trace
         )
     }
+
     pub fn is_safe(&self) -> bool {
         matches!(
             self,
@@ -80,10 +92,10 @@ impl Method {
         )
     }
     pub fn is_idempotent(&self) -> bool {
-        matches!(self, Method::Post | Method::Connect)
+        self.is_safe() || matches!(self, Method::Put | Method::Delete)
     }
     pub fn is_cacheable(&self) -> bool {
-        matches!(self, Method::Get | Method::Head | Method::Post)
+        matches!(self, Method::Get | Method::Head | Method::Post | Method::Patch)
     }
     pub fn is_html_compatible(&self) -> bool {
         matches!(self, Method::Get | Method::Post)
