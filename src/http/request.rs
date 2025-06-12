@@ -1,13 +1,13 @@
 //! Structures and utilities for HTTP requests.
 use crate::concepts::{Dictionary, Parsable};
 use crate::http::{Headers, Message, MessageTrait, Uri, Version};
-use nom::bytes::complete::{tag, take_until};
-use nom::character::complete::{alpha1, space0, space1};
+use nom::bytes::complete::{tag, take_until, take_while1};
+use nom::character::complete::{space0, space1};
 use nom::IResult;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 /// Standard HTTP request methods.
 pub enum Method {
     Get,
@@ -19,6 +19,7 @@ pub enum Method {
     Head,
     Connect,
     Trace,
+    Custom(String),
 }
 
 impl Parsable for Method {
@@ -26,10 +27,12 @@ impl Parsable for Method {
     where
         Self: Sized,
     {
-        let (input, method) = alpha1(input)?;
+        let (input, method) =
+            take_while1(|c: char| c.is_ascii_alphanumeric() || c == '-')(input)?;
+        let upper = method.to_uppercase();
         Ok((
             input,
-            match method.to_uppercase().as_str() {
+            match upper.as_str() {
                 "GET" => Method::Get,
                 "POST" => Method::Post,
                 "PUT" => Method::Put,
@@ -39,7 +42,7 @@ impl Parsable for Method {
                 "HEAD" => Method::Head,
                 "CONNECT" => Method::Connect,
                 "TRACE" => Method::Trace,
-                &_ => panic!("Invalid HTTP method: {}", method),
+                _ => Method::Custom(method.to_string()),
             },
         ))
     }
@@ -60,6 +63,7 @@ impl Display for Method {
                 Method::Head => "HEAD",
                 Method::Connect => "CONNECT",
                 Method::Trace => "TRACE",
+                Method::Custom(s) => s,
             }
         )
     }
@@ -69,44 +73,56 @@ impl Method {
 
     /// Returns `true` if requests with this method usually contain a body.
     pub fn request_has_body(&self) -> bool {
-        matches!(
-            self,
-            Method::Post | Method::Delete | Method::Patch | Method::Put
-        )
+        match self {
+            Method::Post | Method::Delete | Method::Patch | Method::Put => true,
+            Method::Custom(_) => false,
+            _ => false,
+        }
     }
 
     /// Returns `true` if responses to this method are expected to contain a body.
     pub fn response_has_body(&self) -> bool {
-        matches!(
-            self,
+        match self {
             Method::Get
-                | Method::Post
-                | Method::Put
-                | Method::Delete
-                | Method::Patch
-                | Method::Options
-                | Method::Trace
-        )
+            | Method::Post
+            | Method::Put
+            | Method::Delete
+            | Method::Patch
+            | Method::Options
+            | Method::Trace => true,
+            Method::Custom(_) => false,
+            _ => false,
+        }
     }
 
     /// Checks whether the method is defined as safe by the HTTP specification.
     pub fn is_safe(&self) -> bool {
-        matches!(
-            self,
-            Method::Get | Method::Head | Method::Options | Method::Trace
-        )
+        match self {
+            Method::Get | Method::Head | Method::Options | Method::Trace => true,
+            _ => false,
+        }
     }
     /// Indicates if repeated requests using this method are idempotent.
     pub fn is_idempotent(&self) -> bool {
-        self.is_safe() || matches!(self, Method::Put | Method::Delete)
+        match self {
+            Method::Put | Method::Delete => true,
+            Method::Custom(_) => false,
+            _ => self.is_safe(),
+        }
     }
     /// Indicates if responses to this method can be cached.
     pub fn is_cacheable(&self) -> bool {
-        matches!(self, Method::Get | Method::Head | Method::Post | Method::Patch)
+        match self {
+            Method::Get | Method::Head | Method::Post | Method::Patch => true,
+            _ => false,
+        }
     }
     /// Returns `true` if browsers commonly use this method in HTML forms.
     pub fn is_html_compatible(&self) -> bool {
-        matches!(self, Method::Get | Method::Post)
+        match self {
+            Method::Get | Method::Post => true,
+            _ => false,
+        }
     }
 }
 
@@ -315,7 +331,7 @@ impl RequestTrait for Request {
     }
 
     fn get_method(&self) -> Method {
-        self.method
+        self.method.clone()
     }
 
     fn with_method(self, method: Method) -> Self {
@@ -419,6 +435,18 @@ mod tests {
         assert!(Method::Put.is_idempotent());
         assert!(Method::Get.is_cacheable());
         assert!(Method::Post.is_html_compatible());
+    }
+
+    #[test]
+    fn test_custom_method_parse() {
+        assert_eq!(
+            Method::parse("FOO").unwrap().1,
+            Method::Custom("FOO".to_string())
+        );
+        assert_eq!(
+            Method::parse("CUSTOM-METH").unwrap().1,
+            Method::Custom("CUSTOM-METH".to_string())
+        );
     }
 
     #[test]
