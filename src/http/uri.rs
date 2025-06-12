@@ -45,7 +45,7 @@ impl Parsable for Path {
     {
         use nom::Parser;
 
-        let (input, path) = take_till(|c| c == '?' || c == '#' || c == '&')(input)?;
+        let (input, path) = take_till(|c| c == '?' || c == '#')(input)?;
         if !path.contains('/') {
             return Ok((input, Self::new(path.to_string(), None)));
         }
