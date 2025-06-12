@@ -158,7 +158,7 @@ impl Host {
                 let port = addr.port();
                 let request_str =
                     String::from_utf8(s.bytes().map(|b| b.unwrap()).collect::<Vec<u8>>()).unwrap();
-                let (_, request) = Request::parse(&request_str).unwrap();
+                let (_, _request) = Request::parse(&request_str).unwrap();
                 println!(
                     "New connection from {}:{} on {}:{}\n{}",
                     ip,

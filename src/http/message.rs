@@ -416,3 +416,74 @@ mod parse_tests {
         assert_eq!("<html><body>Hello world!</body></html>", message.body());
     }
 }
+
+#[cfg(test)]
+mod message_tests {
+    use super::*;
+
+    fn create_test_message() -> Message {
+        Message::v1_1(
+            Headers::from(&[("Content-Type", &["text/plain"])]),
+            "Test body".to_string(),
+        )
+    }
+
+    #[test]
+    fn test_constructor_versions() {
+        let msg1 = Message::v1_1(Headers::new(), "".to_string());
+        assert_eq!(msg1.protocol_version(), Version::Http1_1);
+
+        let msg2 = Message::v2_0(Headers::new(), "".to_string());
+        assert_eq!(msg2.protocol_version(), Version::Http2_0);
+
+        let msg3 = Message::v3_0(Headers::new(), "".to_string());
+        assert_eq!(msg3.protocol_version(), Version::Http3_0);
+    }
+
+    #[test]
+    fn test_version_methods() {
+        let msg = create_test_message();
+        assert_eq!(msg.protocol_version(), Version::Http1_1);
+
+        let msg = msg.with_protocol_version(Version::Http2_0);
+        assert_eq!(msg.protocol_version(), Version::Http2_0);
+    }
+
+    #[test]
+    fn test_headers_methods() {
+        let mut msg = create_test_message();
+        assert!(msg.has_header("Content-Type"));
+        assert_eq!(msg.get_header_line("Content-Type"), Some("text/plain".to_string()));
+
+        msg.headers_mut().add("X-Test", "value1");
+        assert_eq!(msg.get_header_line("X-Test"), Some("value1".to_string()));
+
+        let msg = msg.with_added_header("X-Test", &["value2".to_string()]);
+        assert_eq!(msg.get_header_line("X-Test"), Some("value1,value2".to_string()));
+
+        let msg = msg.without_header("X-Test");
+        assert!(!msg.has_header("X-Test"));
+
+        let new_headers = Headers::from(&[("New-Header", &["new-value"])]);
+        let msg = msg.with_headers(new_headers);
+        assert_eq!(msg.get_header_line("New-Header"), Some("new-value".to_string()));
+    }
+
+    #[test]
+    fn test_body_methods() {
+        let msg = create_test_message();
+        assert_eq!(msg.body(), "Test body");
+
+        let msg = msg.with_body("New body");
+        assert_eq!(msg.body(), "New body");
+    }
+
+    #[test]
+    fn test_formatting() {
+        let msg = create_test_message();
+        assert_eq!(msg.raw(), "Content-Type: text/plain\r\n\r\nTest body");
+        assert_eq!(msg.to_string(), "HTTP/1.1\r\nContent-Type: text/plain\r\n\r\nTest body");
+    }
+}
+
+

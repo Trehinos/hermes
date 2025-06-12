@@ -22,8 +22,4 @@ mod test {
         request
     }
 
-    #[test]
-    fn test_cycle() {
-        let request = request();
-    }
 }

@@ -33,6 +33,10 @@ impl Path {
             path_info,
         }
     }
+    
+    fn t() {
+        
+    }
 }
 
 impl Parsable for Path {

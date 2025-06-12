@@ -349,16 +349,24 @@ mod tests {
         assert_eq!(query.data.len(), 1);
         assert_eq!(query.get("array[]"), Some(&"value2".to_string()));
         
-        println!("{:?}", Query::parse(query4));
         let query1 = "simple_query#fragment";
         let query2 = "variable=value#fragment";
         let query3 = "array[]=value&array[]=value2#fragment";
         let query4 = "map[a]=value1&map[b]=value2#fragment";
-        println!("{:?}", Query::parse(query1));
-        println!("{:?}", Query::parse(query2));
-        println!("{:?}", Query::parse(query3));
-        println!("{:?}", Query::parse(query4));
-        //todo!("Convert to tests")
+        
+        let (_, query) = Query::parse(query1).unwrap();
+        assert_eq!(query.data.len(), 1);
+        assert_eq!(query.get("simple_query"), Some(&"".to_string()));
+        let (_, query) = Query::parse(query2).unwrap();
+        assert_eq!(query.data.len(), 1);
+        assert_eq!(query.get("variable"), Some(&"value".to_string()));
+        let (_, query) = Query::parse(query3).unwrap();
+        assert_eq!(query.data.len(), 1);
+        assert_eq!(query.get("array[]"), Some(&"value2".to_string()));
+        let (_, query) = Query::parse(query4).unwrap();
+        assert_eq!(query.data.len(), 2);
+        assert_eq!(query.get("map[a]"), Some(&"value1".to_string()));
+        assert_eq!(query.get("map[b]"), Some(&"value2".to_string()));
     }
 
     #[test]
