@@ -8,7 +8,7 @@ use nom::combinator::opt;
 use nom::IResult;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 /// HTTP status codes and reasons recognized by the library.
 pub enum Status {
     /// 100
@@ -143,7 +143,8 @@ pub enum Status {
     NotExtended,
     /// 511
     NetworkAuthenticationRequired,
-    Unknown(u16, &'static str),
+    /// Custom status code with an arbitrary reason phrase.
+    Custom(u16, String),
 }
 
 impl Status {
@@ -212,7 +213,7 @@ impl Status {
             Self::LoopDetected => 508,
             Self::NotExtended => 510,
             Self::NetworkAuthenticationRequired => 511,
-            Self::Unknown(code, _) => *code,
+            Self::Custom(code, _) => *code,
         }
     }
 
@@ -281,20 +282,7 @@ impl Status {
             508 => Self::LoopDetected,
             510 => Self::NotExtended,
             511 => Self::NetworkAuthenticationRequired,
-            code if (100..=199).contains(&code) => {
-                Self::Unknown(code, "Unknown Informational Status")
-            }
-            code if (200..=299).contains(&code) => Self::Unknown(code, "Unknown Successful Status"),
-            code if (300..=399).contains(&code) => {
-                Self::Unknown(code, "Unknown Redirection Status")
-            }
-            code if (400..=499).contains(&code) => {
-                Self::Unknown(code, "Unknown Client Error Status")
-            }
-            code if (500..=599).contains(&code) => {
-                Self::Unknown(code, "Unknown Server Error Status")
-            }
-            code => panic!("Invalid status code {code}"),
+            code => Self::Custom(code, String::new()),
         }
     }
 
@@ -363,12 +351,7 @@ impl Status {
             "Loop Detected" => Self::LoopDetected,
             "Not Extended" => Self::NotExtended,
             "Network Authentication Required" => Self::NetworkAuthenticationRequired,
-            "Unknown Informational Status" => Self::Unknown(199, "Unknown Informational Status"),
-            "Unknown Successful Status" => Self::Unknown(299, "Unknown Successful Status"),
-            "Unknown Redirection Status" => Self::Unknown(399, "Unknown Redirection Status"),
-            "Unknown Client Error Status" => Self::Unknown(499, "Unknown Client Error Status"),
-            "Unknown Server Error Status" => Self::Unknown(599, "Unknown Server Error Status"),
-            r => panic!("Invalid status reason '{}'", r),
+            r => Self::Custom(0, r.to_string()),
         }
     }
 
@@ -437,7 +420,7 @@ impl Status {
             Self::LoopDetected => "Loop Detected",
             Self::NotExtended => "Not Extended",
             Self::NetworkAuthenticationRequired => "Network Authentication Required",
-            Self::Unknown(_, reason) => reason,
+            Self::Custom(_, reason) => reason,
         }
     }
 
@@ -482,8 +465,8 @@ impl Parsable for Status {
 
         let (input, code) = digit1(input)?;
         let code = code.parse::<u16>().unwrap();
-        let mut reason = None;
         let from_code = Status::from_code(code);
+        let mut reason = None;
         let (mut input, _) = space0(input)?;
         if input.contains("\r\n") {
             let (i, r) = opt(take_until("\r\n")).parse(input)?;
@@ -493,14 +476,18 @@ impl Parsable for Status {
             reason = Some(input);
             input = "";
         }
-        if let Some(reason) = reason {
-            let reason = Status::from_reason(reason);
-            if from_code != reason {
-                panic!("Invalid status code: {}, for reason: {}", code, reason);
+
+        if matches!(from_code, Status::Custom(_, ref r) if r.is_empty()) {
+            return Ok((input, Status::Custom(code, reason.unwrap_or_default().to_string())));
+        }
+
+        if let Some(reason_phrase) = reason {
+            if from_code.to_reason() != reason_phrase {
+                return Ok((input, Status::Custom(code, reason_phrase.to_string())));
             }
         }
 
-        Ok((input, Self::from_code(code)))
+        Ok((input, from_code))
     }
 }
 
@@ -605,7 +592,7 @@ impl MessageTrait for Response {
 
 impl ResponseTrait for Response {
     fn status(&self) -> Status {
-        self.status
+        self.status.clone()
     }
     fn with_status(self, status: Status) -> Self {
         Self {
@@ -659,5 +646,19 @@ mod tests {
         let resp = resp.with_status(Status::NotFound);
         assert_eq!(resp.status(), Status::NotFound);
         assert!(resp.to_string().starts_with("HTTP/1.1 404"));
+    }
+
+    #[test]
+    fn test_custom_status_round_trip() {
+        let (rest, status) = Status::parse("600 My Status\r\n").unwrap();
+        assert_eq!(rest, "\r\n");
+        assert_eq!(status.to_code(), 600);
+        assert_eq!(status.to_reason(), "My Status");
+        assert_eq!(status, Status::Custom(600, "My Status".to_string()));
+
+        let line = format!("{} {}\r\n", status.to_code(), status);
+        let (rest2, parsed) = Status::parse(&line).unwrap();
+        assert_eq!(rest2, "\r\n");
+        assert_eq!(parsed, status);
     }
 }
