@@ -1,8 +1,6 @@
 pub mod concepts;
 pub mod http;
 
-pub mod framework;
-
 #[cfg(test)]
 mod test {
     use crate::concepts::Parsable;
