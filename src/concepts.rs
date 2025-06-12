@@ -1,3 +1,4 @@
+//! Common data structures and helpers used across the crate.
 use std::collections::HashMap;
 
 /// A type alias for a `HashMap` where the keys are `String`
@@ -135,6 +136,7 @@ pub fn identifier(input: &str) -> IResult<&str, &str> {
 }
 
 #[derive(Debug, Clone)]
+/// Represents a generic JSON-like value used when parsing parameters.
 pub enum Value {
     Null,
     Bool(bool),

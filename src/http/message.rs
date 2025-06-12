@@ -1,3 +1,4 @@
+//! Utilities for HTTP messages and headers.
 use crate::concepts::Parsable;
 use nom::bytes::complete::{tag, take_until, take_until1};
 use nom::character::complete::{digit1, multispace0};
@@ -56,6 +57,7 @@ pub struct Headers {
 }
 
 impl Headers {
+    /// Parse a single header line into a key and list of values.
     pub fn parse_header(input: &str) -> IResult<&str, (String, Vec<String>)> {
         let (header_value, header_name) = terminated(take_until(":"), tag(":")).parse(input)?;
         Ok((
@@ -70,11 +72,13 @@ impl Headers {
             ),
         ))
     }
+    /// Create an empty `Headers` map.
     pub fn new() -> Self {
         Self {
             data: HashMap::new(),
         }
     }
+    /// Build a `Headers` collection from a slice of key/value pairs.
     pub fn from(headers: &[(&str, &[&str])]) -> Self {
         Self {
             data: headers
@@ -83,6 +87,7 @@ impl Headers {
                 .collect(),
         }
     }
+    /// Return a new `Headers` containing values from `self` and `other`.
     pub fn merge_with(&self, other: &Self) -> Self {
         let mut headers = self.clone();
         for (key, values) in other.data.iter() {
@@ -90,18 +95,23 @@ impl Headers {
         }
         headers
     }
+    /// Iterate over header entries as key/value pairs.
     pub fn iter(&self) -> impl Iterator<Item = (&String, &Vec<String>)> {
         self.data.iter()
     }
+    /// Iterate over mutable header values.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&String, &mut Vec<String>)> {
         self.data.iter_mut()
     }
+    /// Return the number of stored headers.
     pub fn len(&self) -> usize {
         self.data.len()
     }
+    /// Check whether no headers are stored.
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
+    /// Add a new header value without removing existing ones.
     pub fn add(&mut self, key: &str, value: &str) {
         if let Some(values) = self.data.get_mut(key) {
             values.push(value.to_string());
@@ -109,6 +119,7 @@ impl Headers {
         }
         self.data.insert(key.to_string(), vec![value.to_string()]);
     }
+    /// Insert several values for the specified header key.
     pub fn insert(&mut self, key: &str, values: &[String]) {
         if let Some(v) = self.data.get_mut(key) {
             v.extend_from_slice(values);
@@ -116,6 +127,7 @@ impl Headers {
         }
         self.data.insert(key.to_string(), values.to_vec());
     }
+    /// Replace the header with a new set of values.
     pub fn set(&mut self, key: &str, values: &[&str]) {
         self.data.remove(key);
         self.data.insert(
@@ -123,12 +135,15 @@ impl Headers {
             values.iter().map(|s| s.to_string()).collect(),
         );
     }
+    /// Retrieve the stored values for `key` if present.
     pub fn get(&self, key: &str) -> Option<&Vec<String>> {
         self.data.get(key)
     }
+    /// Return the values joined by commas as one line.
     pub fn get_line(&self, key: &str) -> Option<String> {
         self.get(key).map(|v| v.join(","))
     }
+    /// Return the values joined with new lines for display.
     pub fn get_value(&self, key: &str) -> Option<String> {
         self.get(key).map(|v| v.join(",\n\t"))
     }
@@ -171,6 +186,7 @@ impl Parsable for Headers {
     }
 }
 
+/// Common interface implemented by HTTP request and response types.
 pub trait MessageTrait {
     fn protocol_version(&self) -> Version;
     fn with_protocol_version(self, version: Version) -> Self
@@ -205,6 +221,7 @@ pub struct Message {
 }
 
 impl Message {
+    /// Build a HTTP/1.1 message from the given headers and body.
     pub fn v1_1(headers: Headers, body: String) -> Self {
         Self {
             version: Version::Http1_1,
@@ -212,6 +229,7 @@ impl Message {
             body,
         }
     }
+    /// Build a HTTP/2.0 message from the given headers and body.
     pub fn v2_0(headers: Headers, body: String) -> Self {
         Self {
             version: Version::Http2_0,
@@ -219,6 +237,7 @@ impl Message {
             body,
         }
     }
+    /// Build a HTTP/3.0 message from the given headers and body.
     pub fn v3_0(headers: Headers, body: String) -> Self {
         Self {
             version: Version::Http3_0,
@@ -227,6 +246,7 @@ impl Message {
         }
     }
 
+    /// Parse a protocol version at the start of `input` if present.
     pub fn parse_version(input: &str) -> IResult<&str, Option<Version>> {
         let mut input = input;
         if input.starts_with("HTTP") {
@@ -239,6 +259,7 @@ impl Message {
         }
     }
 
+    /// Render the message body preceded by headers as raw text.
     pub fn raw(&self) -> String {
         format!("{}\r\n\r\n{}", self.headers, self.body)
     }
