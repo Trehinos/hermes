@@ -8,7 +8,7 @@ use tokio::net::{TcpListener, TcpStream};
 /// # Examples
 ///
 /// ```no_run
-/// use hermes::server::Server;
+/// use hermes::http::services::server::Server;
 ///
 /// # tokio_test::block_on(async {
 /// let server = Server::new("127.0.0.1:8080");

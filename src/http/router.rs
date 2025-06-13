@@ -5,7 +5,7 @@
 //! conditions (path, method and required headers).
 
 use crate::concepts::Dictionary;
-use crate::controller::Controller;
+use crate::http::controller::Controller;
 use crate::http::{Headers, Method, Request, Response};
 
 /// A single route definition used by the [`Router`].

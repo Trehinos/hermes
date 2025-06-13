@@ -1,5 +1,5 @@
 use clap::{value_parser, Arg, ArgAction, Command};
-use hermes::server::Server;
+use hermes::http::services::server::Server;
 
 /// Version of the `hermes` crate used to build this binary.
 const VERSION: &str = env!("CARGO_PKG_VERSION");

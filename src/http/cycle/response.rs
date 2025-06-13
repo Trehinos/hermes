@@ -1,6 +1,6 @@
 //! Structures and helpers for HTTP responses.
 use crate::concepts::Parsable;
-use crate::http::message::Headers;
+use crate::http::Headers;
 use crate::http::{Message, MessageTrait, Version};
 use nom::bytes::complete::take_until;
 use nom::character::complete::{digit1, space0, space1};

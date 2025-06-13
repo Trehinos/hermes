@@ -1,6 +1,6 @@
 //! Types for parsing and representing URIs.
 use crate::concepts::{concat_if_both, Parsable};
-use crate::http::request::Query;
+use crate::http::Query;
 use crate::http::ParseError;
 use nom::bytes::complete::{tag, take_till, take_until};
 use nom::bytes::take_while;

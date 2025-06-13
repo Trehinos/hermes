@@ -1,5 +1,5 @@
 use clap::{Arg, ArgAction, Command};
-use hermes::client::Client;
+use hermes::http::services::client::Client;
 use hermes::concepts::Parsable;
 use hermes::http::{Headers, Method, RequestFactory, Uri, Version};
 

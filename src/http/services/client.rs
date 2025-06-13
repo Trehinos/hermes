@@ -8,7 +8,7 @@ use tokio::net::TcpStream;
 /// # Examples
 ///
 /// ```no_run
-/// use hermes::client::Client;
+/// use hermes::http::services::client::Client;
 /// use hermes::http::ResponseTrait;
 /// # tokio_test::block_on(async {
 /// let response = Client::get("http://example.com").await.unwrap();
