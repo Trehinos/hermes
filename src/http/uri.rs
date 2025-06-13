@@ -1,5 +1,5 @@
 //! Types for parsing and representing URIs.
-use crate::concepts::{both_or_none, Parsable};
+use crate::concepts::{concat_if_both, Parsable};
 use crate::http::request::Query;
 use crate::http::ParseError;
 use nom::bytes::complete::{tag, take_till, take_until};
@@ -285,7 +285,7 @@ impl Uri {
 
         format!(
             "{}{}{}",
-            both_or_none(&user_info, "@"),
+            concat_if_both(&user_info, "@"),
             self.authority.host,
             self.authority
                 .port
@@ -306,18 +306,18 @@ impl Display for Uri {
         write!(
             f,
             "{}{}{}{}{}",
-            both_or_none(&self.scheme, ":"),
-            both_or_none(
+            concat_if_both(&self.scheme, ":"),
+            concat_if_both(
                 "//",
                 &if path.resource.is_empty() {
                     self.authority()
                 } else {
-                    both_or_none(&self.authority(), "/")
+                    concat_if_both(&self.authority(), "/")
                 }
             ),
             path,
-            both_or_none("?", &self.query.to_string()),
-            both_or_none("#", &self.fragment.clone().unwrap_or("".to_string())),
+            concat_if_both("?", &self.query.to_string()),
+            concat_if_both("#", &self.fragment.clone().unwrap_or("".to_string())),
         )
     }
 }

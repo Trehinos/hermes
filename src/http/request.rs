@@ -382,7 +382,7 @@ mod tests {
         let query1 = "simple_query";
         let query2 = "variable=value";
         let query3 = "array[]=value&array[]=value2";
-        let query4 = "map[a]=value1&map[b]=value2";
+        
         let (_, query) = Query::parse(query1).unwrap();
         assert_eq!(query.data.len(), 1);
         assert_eq!(query.get("simple_query"), Some(&"".to_string()));

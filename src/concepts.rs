@@ -56,17 +56,17 @@ pub type BoxVec<T> = Vec<Box<T>>;
 /// # Examples
 ///
 /// ```
-/// use hermes::concepts::both_or_none;
+/// use hermes::concepts::concat_if_both;
 ///
-/// let empty0 = both_or_none("prefix", "");
-/// let empty1 = both_or_none("", "suffix");
-/// let appended     = both_or_none("prefix", "suffix");
+/// let empty0 = concat_if_both("prefix", "");
+/// let empty1 = concat_if_both("", "suffix");
+/// let appended = concat_if_both("prefix", "suffix");
 ///
 /// assert_eq!(empty0, "");
 /// assert_eq!(empty1, "");
 /// assert_eq!(appended, "prefixsuffix");
 /// ```
-pub fn both_or_none(prefix: &str, suffix: &str) -> String {
+pub fn concat_if_both(prefix: &str, suffix: &str) -> String {
     if !(prefix.is_empty() || suffix.is_empty()) {
         format!("{}{}", prefix, suffix)
     } else {
@@ -151,10 +151,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_both_or_none() {
-        assert_eq!(both_or_none("pre", "suf"), "presuf");
-        assert_eq!(both_or_none("pre", ""), "");
-        assert_eq!(both_or_none("", "suf"), "");
+    fn test_concat_if_both() {
+        assert_eq!(concat_if_both("pre", "suf"), "presuf");
+        assert_eq!(concat_if_both("pre", ""), "");
+        assert_eq!(concat_if_both("", "suf"), "");
     }
 
     #[test]

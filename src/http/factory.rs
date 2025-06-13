@@ -324,7 +324,7 @@ mod tests {
     use super::*;
 
     use crate::http::{Authority, Path, Query};
-    use crate::concepts::Parsable;
+
     #[test]
     fn test_request_factory() {
         let factory = RequestFactory::version(Version::Http1_1);
