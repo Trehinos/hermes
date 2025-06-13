@@ -50,7 +50,7 @@ pub enum Status {
     /// 304
     NotModified,
     /// 305
-    /// 
+    ///
     /// Deprecated, see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status#305_use_proxy
     UseProxy,
     /// 307
@@ -459,9 +459,9 @@ impl Parsable for Status {
         use nom::Parser;
 
         let (input, code) = digit1(input)?;
-        let code = code
-            .parse::<u16>()
-            .map_err(|_| nom::Err::Failure(nom::error::Error::new(code, nom::error::ErrorKind::Fail)))?;
+        let code = code.parse::<u16>().map_err(|_| {
+            nom::Err::Failure(nom::error::Error::new(code, nom::error::ErrorKind::Fail))
+        })?;
         let from_code = Status::from_code(code);
         let mut reason = None;
         let (mut input, _) = space0(input)?;
@@ -475,7 +475,10 @@ impl Parsable for Status {
         }
 
         if matches!(from_code, Status::Custom(_, ref r) if r.is_empty()) {
-            return Ok((input, Status::Custom(code, reason.unwrap_or_default().to_string())));
+            return Ok((
+                input,
+                Status::Custom(code, reason.unwrap_or_default().to_string()),
+            ));
         }
 
         if let Some(reason_phrase) = reason {
@@ -487,8 +490,6 @@ impl Parsable for Status {
         Ok((input, from_code))
     }
 }
-
-
 
 /// Behaviour shared by HTTP response types.
 pub trait ResponseTrait: MessageTrait {
@@ -505,6 +506,20 @@ pub trait ResponseTrait: MessageTrait {
 }
 
 #[derive(Debug, Clone)]
+/// Parsed HTTP response message.
+///
+/// The [`Response`] type wraps a [`Status`] and a [`Message`] carrying headers
+/// and body.  It implements [`ResponseTrait`] allowing high level access to the
+/// status code and helper methods for working with headers or the body.
+///
+/// # Examples
+/// ```
+/// use hermes::http::{Headers, ResponseFactory, Version, Status, ResponseTrait};
+///
+/// let factory = ResponseFactory::version(Version::Http1_1);
+/// let resp = factory.with_status(Status::OK, Headers::new());
+/// assert!(resp.to_string().starts_with("HTTP/1.1 200"));
+/// ```
 pub struct Response {
     pub status: Status,
     pub message: Message,
@@ -611,8 +626,6 @@ impl Display for Response {
         write!(f, "{}", self.message.raw())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
