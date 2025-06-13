@@ -6,6 +6,21 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
 /// Helper for constructing [`Request`] instances with preset defaults.
+///
+/// ```
+/// use hermes::http::{Authority, Path, Query, Headers, RequestFactory, Uri, Version, Method};
+///
+/// let uri = Uri::new(
+///     "http".into(),
+///     Authority::new("example.com".into(), None, None, None),
+///     Path::new("".into(), None),
+///     Query::new(),
+///     None,
+/// );
+/// let factory = RequestFactory::version(Version::Http1_1);
+/// let req = factory.build(Method::Get, uri, Headers::new(), "");
+/// assert_eq!(req.method, Method::Get);
+/// ```
 pub struct RequestFactory {
     pub version: Version,
     pub default_headers: Headers,
@@ -13,6 +28,13 @@ pub struct RequestFactory {
 
 impl RequestFactory {
     /// Create a new factory using the given HTTP version and default headers.
+    ///
+    /// ```
+    /// use hermes::http::{Headers, RequestFactory, Version};
+    ///
+    /// let factory = RequestFactory::new(Version::Http1_1, Headers::new());
+    /// assert_eq!(factory.version, Version::Http1_1);
+    /// ```
     pub fn new(version: Version, default_headers: Headers) -> Self {
         Self {
             version,
@@ -21,11 +43,33 @@ impl RequestFactory {
     }
 
     /// Shorthand for creating a factory with empty default headers.
+    ///
+    /// ```
+    /// use hermes::http::{RequestFactory, Version};
+    ///
+    /// let factory = RequestFactory::version(Version::Http1_1);
+    /// assert!(factory.default_headers.is_empty());
+    /// ```
     pub fn version(version: Version) -> Self {
         Self::new(version, Headers::new())
     }
 
     /// Build a [`Request`] with the provided method, target and data.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, Headers, Method, RequestFactory, Uri, Version, RequestTrait};
+    ///
+    /// let factory = RequestFactory::version(Version::Http1_1);
+    /// let uri = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("localhost".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let req = factory.build(Method::Post, uri, Headers::new(), "data");
+    /// assert_eq!(req.get_method(), Method::Post);
+    /// ```
     pub fn build(&self, method: Method, target: Uri, headers: Headers, body: &str) -> Request {
         Request {
             method,
@@ -39,11 +83,41 @@ impl RequestFactory {
     }
 
     /// Build a GET request to `target` using `headers`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, Headers, Method, RequestFactory, Uri, Version, RequestTrait};
+    ///
+    /// let factory = RequestFactory::version(Version::Http1_1);
+    /// let uri = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let req = factory.get(uri, Headers::new());
+    /// assert_eq!(req.get_method(), Method::Get);
+    /// ```
     pub fn get(&self, target: Uri, headers: Headers) -> Request {
         self.build(Method::Get, target, headers, "")
     }
 
     /// Build a POST request to `target` using `headers` and `body`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, Headers, RequestFactory, Uri, Version, MessageTrait};
+    ///
+    /// let factory = RequestFactory::version(Version::Http1_1);
+    /// let uri = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let req = factory.post(uri, Headers::new(), "payload");
+    /// assert_eq!(req.body(), "payload");
+    /// ```
     pub fn post(&self, target: Uri, headers: Headers, body: &str) -> Request {
         self.build(Method::Post, target, headers, body)
     }
@@ -229,6 +303,14 @@ impl Display for WWWAuthenticate {
 
 #[derive(Debug, Clone)]
 /// Helper for constructing [`Response`] instances with preset defaults.
+///
+/// ```
+/// use hermes::http::{Headers, ResponseFactory, Status, Version, ResponseTrait};
+///
+/// let factory = ResponseFactory::version(Version::Http1_1);
+/// let resp = factory.with_status(Status::OK, Headers::new());
+/// assert_eq!(resp.status(), Status::OK);
+/// ```
 pub struct ResponseFactory {
     pub version: Version,
     pub default_headers: Headers,
@@ -236,6 +318,13 @@ pub struct ResponseFactory {
 
 impl ResponseFactory {
     /// Create a new factory using the given HTTP version and default headers.
+    ///
+    /// ```
+    /// use hermes::http::{Headers, ResponseFactory, Version, MessageTrait};
+    ///
+    /// let f = ResponseFactory::new(Version::Http1_1, Headers::new());
+    /// assert_eq!(f.version, Version::Http1_1);
+    /// ```
     pub fn new(version: Version, default_headers: Headers) -> Self {
         Self {
             version,
@@ -244,11 +333,26 @@ impl ResponseFactory {
     }
 
     /// Shorthand for creating a factory with empty default headers.
+    ///
+    /// ```
+    /// use hermes::http::{ResponseFactory, Version};
+    ///
+    /// let f = ResponseFactory::version(Version::Http1_1);
+    /// assert!(f.default_headers.is_empty());
+    /// ```
     pub fn version(version: Version) -> Self {
         Self::new(version, Headers::new())
     }
 
     /// Construct a [`Response`] with the supplied status and headers.
+    ///
+    /// ```
+    /// use hermes::http::{Headers, ResponseFactory, Status, Version, ResponseTrait};
+    ///
+    /// let factory = ResponseFactory::version(Version::Http1_1);
+    /// let resp = factory.with_status(Status::OK, Headers::new());
+    /// assert_eq!(resp.status(), Status::OK);
+    /// ```
     pub fn with_status(&self, status: Status, headers: Headers) -> Response {
         Response {
             status,
@@ -260,6 +364,21 @@ impl ResponseFactory {
         }
     }
     /// Build a redirection response with `Location` header.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let factory = ResponseFactory::version(Version::Http1_1);
+    /// let uri = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = factory.moved_permanently(uri);
+    /// assert_eq!(resp.code(), 301);
+    /// ```
     pub fn redirect(&self, redirection: Redirection) -> Response {
         let mut headers = Headers::new();
         let (status, target) = redirection.to_pair();
@@ -267,52 +386,198 @@ impl ResponseFactory {
         self.with_status(status, headers)
     }
     /// Convenience helper to return a 200 response.
+    ///
+    /// ```
+    /// use hermes::http::{Headers, ResponseFactory, Version, MessageTrait};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let resp = fac.ok(Headers::new(), "data".to_string());
+    /// assert_eq!(resp.body(), "data");
+    /// ```
     pub fn ok(&self, headers: Headers, body: String) -> Response {
         self.with_status(Status::OK, headers).with_body(&body)
     }
     /// Generate a 204-like empty response.
+    ///
+    /// ```
+    /// use hermes::http::{Headers, ResponseFactory, Version, MessageTrait};
+    ///
+    /// let f = ResponseFactory::version(Version::Http1_1);
+    /// let resp = f.no_content(Headers::new());
+    /// assert_eq!(resp.body(), "");
+    /// ```
     pub fn no_content(&self, headers: Headers) -> Response {
         self.with_status(Status::OK, headers)
     }
     /// Create a 300 Multiple Choices response.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let uri = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("/a".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = fac.multiple_choice(vec![uri], None);
+    /// assert_eq!(resp.code(), 300);
+    /// ```
     pub fn multiple_choice(&self, uris: Vec<Uri>, preferred: Option<Uri>) -> Response {
         self.redirect(Redirection::MultipleChoices(uris, preferred))
     }
     /// Create a 301 response pointing permanently to `uri`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let f = ResponseFactory::version(Version::Http1_1);
+    /// let u = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = f.moved_permanently(u);
+    /// assert_eq!(resp.code(), 301);
+    /// ```
     pub fn moved_permanently(&self, uri: Uri) -> Response {
         self.redirect(Redirection::MovedPermanently(uri))
     }
     /// Create a 302 response pointing to `uri`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let u = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = fac.found(u);
+    /// assert_eq!(resp.code(), 302);
+    /// ```
     pub fn found(&self, uri: Uri) -> Response {
         self.redirect(Redirection::Found(uri))
     }
     /// Create a 303 response pointing to `uri`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let u = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = fac.see_other(u);
+    /// assert_eq!(resp.code(), 303);
+    /// ```
     pub fn see_other(&self, uri: Uri) -> Response {
         self.redirect(Redirection::SeeOther(uri))
     }
     /// Create a 304 response using headers from `headers`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, Headers, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let u = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = fac.not_modified(u, Headers::new());
+    /// assert_eq!(resp.code(), 304);
+    /// ```
     pub fn not_modified(&self, uri: Uri, headers: Headers) -> Response {
         self.redirect(Redirection::NotModified(uri, headers))
     }
     /// Create a 307 Temporary Redirect to `uri`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let u = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = fac.temporary_redirect(u);
+    /// assert_eq!(resp.code(), 307);
+    /// ```
     pub fn temporary_redirect(&self, uri: Uri) -> Response {
         self.redirect(Redirection::TemporaryRedirect(uri))
     }
     /// Create a 308 Permanent Redirect to `uri`.
+    ///
+    /// ```
+    /// use hermes::http::{Authority, Path, Query, ResponseFactory, Uri, Version, ResponseTrait};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let u = Uri::new(
+    ///     "http".into(),
+    ///     Authority::new("example.com".into(), None, None, None),
+    ///     Path::new("".into(), None),
+    ///     Query::new(),
+    ///     None,
+    /// );
+    /// let resp = fac.permanent_redirect(u);
+    /// assert_eq!(resp.code(), 308);
+    /// ```
     pub fn permanent_redirect(&self, uri: Uri) -> Response {
         self.redirect(Redirection::PermanentRedirect(uri))
     }
     /// Return a 401 Unauthorized response with `WWW-Authenticate` header.
+    ///
+    /// ```
+    /// use hermes::http::{AuthenticationScheme, ResponseFactory, Version, WWWAuthenticate, Headers, ResponseTrait};
+    ///
+    /// let factory = ResponseFactory::version(Version::Http1_1);
+    /// let auth = WWWAuthenticate { scheme: AuthenticationScheme::Basic, realm: None, charset: None };
+    /// let resp = factory.unauthorized(auth, Headers::new());
+    /// assert_eq!(resp.code(), 401);
+    /// ```
     pub fn unauthorized(&self, www_authenticate: WWWAuthenticate, headers: Headers) -> Response {
         let mut headers = headers;
         headers.add("WWW-Authenticate", &www_authenticate.to_string());
         self.with_status(Status::Unauthorized, headers)
     }
     /// Return a 403 Forbidden response.
+    ///
+    /// ```
+    /// use hermes::http::{Headers, ResponseFactory, Version, ResponseTrait};
+    ///
+    /// let f = ResponseFactory::version(Version::Http1_1);
+    /// let resp = f.forbidden(Headers::new());
+    /// assert_eq!(resp.code(), 403);
+    /// ```
     pub fn forbidden(&self, headers: Headers) -> Response {
         self.with_status(Status::Forbidden, headers)
     }
     /// Return a 501 Not Implemented response with a body.
+    ///
+    /// ```
+    /// use hermes::http::{ResponseFactory, Version};
+    ///
+    /// let fac = ResponseFactory::version(Version::Http1_1);
+    /// let resp = fac.not_implemented("todo");
+    /// assert!(resp.to_string().contains("501"));
+    /// ```
     pub fn not_implemented(&self, message: &str) -> Response {
         self.with_status(Status::NotImplemented, Headers::new())
             .with_body(message)
@@ -328,7 +593,13 @@ mod tests {
     #[test]
     fn test_request_factory() {
         let factory = RequestFactory::version(Version::Http1_1);
-        let uri = Uri::new("http".into(), Authority::new("host".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let uri = Uri::new(
+            "http".into(),
+            Authority::new("host".into(), None, None, None),
+            Path::new("/".into(), None),
+            Query::new(),
+            None,
+        );
         let req = factory.get(uri.clone(), Headers::new());
         assert_eq!(req.method, Method::Get);
         let req2 = factory.post(uri.clone(), Headers::new(), "b");
@@ -338,7 +609,13 @@ mod tests {
     #[test]
     fn test_redirection_and_response_factory() {
         let factory = ResponseFactory::version(Version::Http1_1);
-        let target = Uri::new("http".into(), Authority::new("host".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let target = Uri::new(
+            "http".into(),
+            Authority::new("host".into(), None, None, None),
+            Path::new("/".into(), None),
+            Query::new(),
+            None,
+        );
         let resp = factory.moved_permanently(target.clone());
         assert_eq!(resp.status, Status::MovedPermanently);
         assert!(resp.message.raw().contains("http://host//"));
@@ -347,7 +624,11 @@ mod tests {
         assert_eq!(resp.status, Status::OK);
         assert_eq!(resp.body(), "body");
 
-        let www = WWWAuthenticate { scheme: AuthenticationScheme::Basic, realm: Some("r".to_string()), charset: None };
+        let www = WWWAuthenticate {
+            scheme: AuthenticationScheme::Basic,
+            realm: Some("r".to_string()),
+            charset: None,
+        };
         let resp = factory.unauthorized(www, Headers::new());
         assert_eq!(resp.status, Status::Unauthorized);
     }
