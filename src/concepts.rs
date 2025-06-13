@@ -60,7 +60,7 @@ pub type BoxVec<T> = Vec<Box<T>>;
 ///
 /// let empty0 = concat_if_both("prefix", "");
 /// let empty1 = concat_if_both("", "suffix");
-/// let appended     = concat_if_both("prefix", "suffix");
+/// let appended = concat_if_both("prefix", "suffix");
 ///
 /// assert_eq!(empty0, "");
 /// assert_eq!(empty1, "");
