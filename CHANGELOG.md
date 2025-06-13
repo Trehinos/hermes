@@ -6,11 +6,11 @@ This file documents all notable changes to Hermes.
 
 In this version, the API will not change a lot, but it will grow very fast.
 
-### 0.1.2 (todo)
+### 0.1.2 (unreleased)
 
 * Finalize the routing system.
 
-### 0.1.1 (unreleased)
+### 0.1.1
 
 * Enhance the client:
   - New syntax `hermes-client [OPTIONS] <METHOD> <URL> [<BODY>]`.
