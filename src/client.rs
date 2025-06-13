@@ -28,11 +28,14 @@ impl Client {
         }
     }
 
-    pub async fn send(&mut self, request: Request) -> std::io::Result<Response> {
+    async fn write_request(&mut self, request: &Request) -> std::io::Result<()> {
         self.stream
             .write_all(request.to_string().as_bytes())
             .await?;
-        self.stream.shutdown().await?;
+        self.stream.shutdown().await
+    }
+
+    async fn read_response(&mut self) -> std::io::Result<Response> {
         let mut buf = Vec::new();
         self.stream.read_to_end(&mut buf).await?;
         let text = String::from_utf8_lossy(&buf);
@@ -40,6 +43,12 @@ impl Client {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid response")
         })?;
         Ok(response)
+    }
+
+    /// Send a [`Request`] over the wire and return the parsed [`Response`].
+    pub async fn send(&mut self, request: Request) -> std::io::Result<Response> {
+        self.write_request(&request).await?;
+        self.read_response().await
     }
 
     /// Convenience helper to perform a GET request to `url`.

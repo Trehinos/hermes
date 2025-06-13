@@ -24,4 +24,5 @@ cargo test
 ```
 
 At this stage the crate offers utilities for parsing and generating HTTP
-messages. All core types are available under the `http` module.
+messages. All core types are available under the `http` module. It also ships
+with a minimal asynchronous client and server used in the tests and examples.
