@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
             Arg::new("address")
                 .short('a')
                 .long("address")
-                .value_name("ADDRESS")
+                .value_name("address")
                 .default_value("0.0.0.0")
                 .help("Address to bind"),
         )
@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
             Arg::new("port")
                 .short('p')
                 .long("port")
-                .value_name("PORT")
+                .value_name("port")
                 .default_value("80")
                 .value_parser(value_parser!(u16))
                 .help("Port to listen on"),
@@ -42,6 +42,7 @@ async fn main() -> std::io::Result<()> {
     let port = matches
         .get_one::<u16>("port")
         .expect("port has default");
+    println!("Listening on {}:{}", address, port);
     let addr = format!("{}:{}", address, port);
     let server = Server::new(&addr);
     server.run().await

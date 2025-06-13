@@ -28,6 +28,8 @@ async fn main() -> std::io::Result<()> {
     let url = matches
         .get_one::<String>("uri")
         .expect("URI argument missing");
+    
+    println!("Sending request to {}", url);
     let response = Client::get(url).await?;
     println!("{}", response);
     Ok(())
