@@ -10,16 +10,11 @@ In this version, the API will not change a lot, but it will grow very fast.
 
 * Finalize the routing system.
 
-### 0.1.1 (todo)
+### 0.1.1 (unreleased)
 
 * Enhance the client:
-  ```
-  Option for client request:
-  -h --header
-  add a header.
-  
-  syntax: client [-- options] <METHOD> <URL> [<BODY>]
-  ```
+  - New syntax `hermes-client [OPTIONS] <METHOD> <URL> [<BODY>]`.
+  - Add `-H/--header` option to specify headers multiple times.
 * Write a test: Test the server with multiple connections.
 * Refactor the client and server structures to be real objects.
 * Prototype a routing system.
