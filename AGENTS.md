@@ -13,3 +13,5 @@ The aim is to provide a Rust alternative to typical PHP web stacks.
 * Prefer clear commit messages summarising the intent of the change.
 * Strive for clean code and keep the repository architecture organised.
 * Follow Clean Architecture principles and practise TDD whenever possible.
+* All identifiers, comments, documentation, branch names, commit messages and
+  file names **must be written in English**.

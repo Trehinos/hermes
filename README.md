@@ -1,15 +1,17 @@
 # Hermes
 
 Hermes is the seed of a complete HTTP framework written in Rust. While it
-currently focuses on clean abstractions for HTTP messages, the long term goal
-is to offer a fully fledged web framework capable of replacing PHP stacks. The
-project will gradually grow to include:
+currently focuses on clean abstractions for HTTP messages and minimal
+networking components, the long‑term goal is to offer a fully fledged web
+framework capable of replacing typical PHP stacks.
 
-* controllers to route requests and invoke business logic
-* security features for authentication and authorization
-* wrappers around database connections
-* an ORM layer for working with persistent data
-* a template system for rendering responses
+## Features
+
+- Utilities for parsing and generating HTTP messages exposed under the `http`
+  module.
+- A minimal asynchronous client for performing requests.
+- A lightweight asynchronous server used in examples and tests.
+- A simple router and `Controller` trait to handle incoming requests.
 
 ## Building
 
@@ -26,3 +28,13 @@ cargo test
 At this stage the crate offers utilities for parsing and generating HTTP
 messages. All core types are available under the `http` module. It also ships
 with a minimal asynchronous client and server used in the tests and examples.
+
+## Roadmap
+
+The project will evolve into a complete backend framework. Upcoming milestones
+include an asynchronous server built on Tokio and Hyper, a richer routing
+system with middleware and dependency injection, session and security
+mechanisms, database access through an ORM, a template engine, CLI tools and
+continuous integration. Advanced features like form handling, background tasks
+and optional WebSocket support are also planned. See `ROADMAP.md` for more
+details.
