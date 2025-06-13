@@ -12,4 +12,5 @@
 pub mod client;
 pub mod concepts;
 pub mod http;
+pub mod router;
 pub mod server;
