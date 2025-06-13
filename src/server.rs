@@ -48,7 +48,9 @@ async fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
     let _ = Request::parse(&request);
 
     let factory = ResponseFactory::version(Version::Http1_1);
-    let response = factory.with_status(Status::NoContent, Headers::new());
+    let mut headers = Headers::new();
+    headers.insert("Content-Length", &["0".to_string()]);
+    let response = factory.with_status(Status::NoContent, headers);
     stream.write_all(response.to_string().as_bytes()).await?;
     stream.shutdown().await?;
     Ok(())
