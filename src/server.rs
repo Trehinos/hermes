@@ -1,9 +1,22 @@
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use crate::http::{Headers, Request, ResponseFactory, Status, Version};
 use crate::concepts::Parsable;
+use crate::http::{Headers, Request, ResponseFactory, Status, Version};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
 
 /// Simple asynchronous TCP server handling HTTP requests.
+///
+/// # Examples
+///
+/// ```no_run
+/// use hermes::server::Server;
+///
+/// # tokio_test::block_on(async {
+/// let server = Server::new("127.0.0.1:8080");
+/// // This will block forever handling incoming connections
+/// // and therefore is marked as `no_run` in the documentation.
+/// // server.run().await.unwrap();
+/// # })
+/// ```
 pub struct Server {
     address: String,
 }

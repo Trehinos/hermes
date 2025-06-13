@@ -27,8 +27,7 @@ impl Parsable for Method {
     where
         Self: Sized,
     {
-        let (input, method) =
-            take_while1(|c: char| c.is_ascii_alphanumeric() || c == '-')(input)?;
+        let (input, method) = take_while1(|c: char| c.is_ascii_alphanumeric() || c == '-')(input)?;
         let upper = method.to_uppercase();
         Ok((
             input,
@@ -70,7 +69,6 @@ impl Display for Method {
 }
 
 impl Method {
-
     /// Returns `true` if requests with this method usually contain a body.
     pub fn request_has_body(&self) -> bool {
         match self {
@@ -127,6 +125,23 @@ impl Method {
 }
 
 #[derive(Debug, Default, Clone)]
+/// Representation of a URI query string.
+///
+/// The structure behaves like a simple map of key/value pairs and offers
+/// helpers to manipulate its contents.
+///
+/// # Examples
+/// ```
+/// use hermes::http::Query;
+/// use hermes::concepts::Parsable;
+///
+/// let mut q = Query::new();
+/// q.add("a", "1");
+/// assert_eq!(q.get_line("a"), Some("1".to_string()));
+///
+/// let (_, parsed) = Query::parse("foo=bar").unwrap();
+/// assert_eq!(parsed.get("foo"), Some(&"bar".to_string()));
+/// ```
 pub struct Query {
     data: Dictionary<String>,
 }
@@ -372,7 +387,6 @@ impl Display for Request {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -382,7 +396,7 @@ mod tests {
         let query1 = "simple_query";
         let query2 = "variable=value";
         let query3 = "array[]=value&array[]=value2";
-        
+
         let (_, query) = Query::parse(query1).unwrap();
         assert_eq!(query.data.len(), 1);
         assert_eq!(query.get("simple_query"), Some(&"".to_string()));
@@ -390,16 +404,16 @@ mod tests {
         let (_, query) = Query::parse(query2).unwrap();
         assert_eq!(query.data.len(), 1);
         assert_eq!(query.get("variable"), Some(&"value".to_string()));
-        
+
         let (_, query) = Query::parse(query3).unwrap();
         assert_eq!(query.data.len(), 1);
         assert_eq!(query.get("array[]"), Some(&"value2".to_string()));
-        
+
         let query1 = "simple_query#fragment";
         let query2 = "variable=value#fragment";
         let query3 = "array[]=value&array[]=value2#fragment";
         let query4 = "map[a]=value1&map[b]=value2#fragment";
-        
+
         let (_, query) = Query::parse(query1).unwrap();
         assert_eq!(query.data.len(), 1);
         assert_eq!(query.get("simple_query"), Some(&"".to_string()));
@@ -466,7 +480,13 @@ mod tests {
 
     #[test]
     fn test_request_methods() {
-        let uri = Uri::new("http".into(), Authority::new("host".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let uri = Uri::new(
+            "http".into(),
+            Authority::new("host".into(), None, None, None),
+            Path::new("/".into(), None),
+            Query::new(),
+            None,
+        );
         let req = Request {
             method: Method::Get,
             target: uri.clone(),
@@ -476,7 +496,13 @@ mod tests {
         assert_eq!(req.get_method(), Method::Get);
         let req2 = req.clone().with_method(Method::Post);
         assert_eq!(req2.get_method(), Method::Post);
-        let uri2 = Uri::new("http".into(), Authority::new("example".into(), None, None, None), Path::new("/".into(), None), Query::new(), None);
+        let uri2 = Uri::new(
+            "http".into(),
+            Authority::new("example".into(), None, None, None),
+            Path::new("/".into(), None),
+            Query::new(),
+            None,
+        );
         let req3 = req2.with_uri(uri2, true);
         assert_eq!(req3.get_header_line("Host"), Some("example".to_string()));
         assert!(req3.get_target().contains("http://example"));

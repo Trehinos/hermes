@@ -8,6 +8,22 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+/// Supported versions of the HTTP protocol.
+///
+/// The [`Version::parse`] method can be used to read the protocol version
+/// from the start of a request or response line.
+///
+/// # Examples
+///
+/// ```
+/// use hermes::http::Version;
+/// use hermes::concepts::Parsable;
+///
+/// let (rest, ver) = Version::parse("HTTP/1.1 rest").unwrap();
+/// assert_eq!(ver, Version::Http1_1);
+/// assert_eq!(rest, " rest");
+/// assert_eq!(ver.to_string(), "HTTP/1.1");
+/// ```
 pub enum Version {
     Http0_9,
     Http1_0,
@@ -57,6 +73,22 @@ impl Parsable for Version {
 }
 
 #[derive(Debug, Default, Clone)]
+/// Collection of HTTP header fields.
+///
+/// The structure stores a mapping between header names and the associated
+/// values.  Individual helper methods are provided to insert and retrieve
+/// headers in a convenient way.
+///
+/// # Examples
+///
+/// ```
+/// use hermes::http::Headers;
+///
+/// let mut headers = Headers::new();
+/// headers.add("Content-Type", "text/plain");
+/// headers.add("Content-Type", "charset=utf8");
+/// assert_eq!(headers.get_line("Content-Type"), Some("text/plain,charset=utf8".to_string()));
+/// ```
 pub struct Headers {
     data: HashMap<String, Vec<String>>,
 }
@@ -182,8 +214,9 @@ impl Parsable for Headers {
             if line.is_empty() {
                 continue;
             }
-            let (_, (name, value)) = Self::parse_header(line)
-                .map_err(|_| nom::Err::Error(nom::error::Error::new(line, nom::error::ErrorKind::Fail)))?;
+            let (_, (name, value)) = Self::parse_header(line).map_err(|_| {
+                nom::Err::Error(nom::error::Error::new(line, nom::error::ErrorKind::Fail))
+            })?;
             headers.insert(name, value);
         }
         Ok((input, Self { data: headers }))
@@ -218,6 +251,21 @@ pub trait MessageTrait {
 }
 
 #[derive(Debug, Clone)]
+/// Generic HTTP message used as the building block of requests and responses.
+///
+/// The struct simply stores the protocol [`Version`], a set of [`Headers`] and
+/// the message body.  Convenience constructors like [`Message::v1_1`] help
+/// create instances with a fixed version.
+///
+/// # Examples
+/// ```
+/// use hermes::http::{Headers, Message, Version};
+/// use hermes::http::MessageTrait;
+///
+/// let msg = Message::v1_1(Headers::new(), "body".into());
+/// assert_eq!(msg.protocol_version(), Version::Http1_1);
+/// assert_eq!(msg.body(), "body");
+/// ```
 pub struct Message {
     pub version: Version,
     pub headers: Headers,
@@ -275,8 +323,9 @@ impl Parsable for Message {
     where
         Self: Sized,
     {
-        let (input, version) =
-            Self::parse_version(input).map_err(|_| nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail)))?;
+        let (input, version) = Self::parse_version(input).map_err(|_| {
+            nom::Err::Error(nom::error::Error::new(input, nom::error::ErrorKind::Fail))
+        })?;
         let (body, headers) = Headers::parse(input)?;
 
         Ok((
@@ -375,18 +424,12 @@ impl Display for Message {
     }
 }
 
-
-
-
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn sample_headers() -> Headers {
-        Headers::from(&[("A", &["1"]), ("B", &["2"])] )
+        Headers::from(&[("A", &["1"]), ("B", &["2"])])
     }
 
     #[test]
@@ -431,8 +474,12 @@ mod tests {
         assert!(out.contains("B: 2,\n\t3"));
 
         let mut count = 0;
-        for (_, vals) in merged.iter() { count += vals.len(); }
-        for (_, vals) in merged.clone().iter_mut() { let _ = vals.len(); }
+        for (_, vals) in merged.iter() {
+            count += vals.len();
+        }
+        for (_, vals) in merged.clone().iter_mut() {
+            let _ = vals.len();
+        }
         assert_eq!(count, 3);
     }
 
@@ -447,7 +494,10 @@ mod tests {
     #[test]
     fn test_parse_header_error() {
         let err = Headers::parse_header("BadHeader").unwrap_err();
-        assert_eq!(err, ParseError::InvalidHeaderFormat("BadHeader".to_string()));
+        assert_eq!(
+            err,
+            ParseError::InvalidHeaderFormat("BadHeader".to_string())
+        );
     }
 
     #[test]
