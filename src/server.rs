@@ -17,6 +17,7 @@ use tokio::net::{TcpListener, TcpStream};
 /// // server.run().await.unwrap();
 /// # })
 /// ```
+#[derive(Clone)]
 pub struct Server {
     address: String,
 }
@@ -34,24 +35,25 @@ impl Server {
         let listener = TcpListener::bind(&self.address).await?;
         loop {
             let (stream, _) = listener.accept().await?;
+            let this = self.clone();
             tokio::spawn(async move {
-                let _ = handle_connection(stream).await;
+                let _ = this.handle_connection(stream).await;
             });
         }
     }
-}
 
-async fn handle_connection(mut stream: TcpStream) -> std::io::Result<()> {
-    let mut buf = Vec::new();
-    stream.read_to_end(&mut buf).await?;
-    let request = String::from_utf8_lossy(&buf);
-    let _ = Request::parse(&request);
+    async fn handle_connection(&self, mut stream: TcpStream) -> std::io::Result<()> {
+        let mut buf = Vec::new();
+        stream.read_to_end(&mut buf).await?;
+        let request = String::from_utf8_lossy(&buf);
+        let _ = Request::parse(&request);
 
-    let factory = ResponseFactory::version(Version::Http1_1);
-    let mut headers = Headers::new();
-    headers.insert("Content-Length", &["0".to_string()]);
-    let response = factory.with_status(Status::NoContent, headers);
-    stream.write_all(response.to_string().as_bytes()).await?;
-    stream.shutdown().await?;
-    Ok(())
+        let factory = ResponseFactory::version(Version::Http1_1);
+        let mut headers = Headers::new();
+        headers.insert("Content-Length", &["0".to_string()]);
+        let response = factory.with_status(Status::NoContent, headers);
+        stream.write_all(response.to_string().as_bytes()).await?;
+        stream.shutdown().await?;
+        Ok(())
+    }
 }

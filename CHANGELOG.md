@@ -16,7 +16,7 @@ In this version, the API will not change a lot, but it will grow very fast.
   - New syntax `hermes-client [OPTIONS] <METHOD> <URL> [<BODY>]`.
   - Add `-H/--header` option to specify headers multiple times.
 * Write a test: Test the server with multiple connections.
-* Refactor the client and server structures to be real objects.
+* Refactor the client and server modules into dedicated objects.
 * Prototype a routing system.
 
 ### 0.1.0 — project bootstrap
