@@ -1,7 +1,7 @@
 //! Simple request router.
 //!
 //! The router stores a list of [`Route`] definitions and can match an incoming
-//! [`Request`](crate::http::Request) to the first route that satisfies all
+//! [`Request`] to the first route that satisfies all
 //! conditions (path, method and required headers).
 
 use crate::concepts::Dictionary;
