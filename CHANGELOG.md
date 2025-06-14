@@ -9,6 +9,7 @@ In this version, the API will not change a lot, but it will grow very fast.
 ### 0.1.2 (unreleased)
 
 * Finalize the routing system.
+* Move the HTTP client and server under the `http::services` namespace.
 
 ### 0.1.1
 
