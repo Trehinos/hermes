@@ -1,12 +1,12 @@
 ## Roadmap to Evolve the Framework Toward a complete Backend Framework
 
 1. **Asynchronous HTTP Server**
-    - Implement a server based on `tokio`/`hyper`.
-    - Accept TCP connections, parse requests using existing types, and generate responses.
+    - ~~Implement a server based on `tokio`/`hyper`.~~
+    - ~~Accept TCP connections, parse requests using existing types, and generate responses.~~
 
 2. **Routing System**
-    - Introduce a router that maps paths and HTTP methods to controllers.
-    - Support parameterized routes and route groups (prefixes, middleware).
+    - ~~Introduce a router that maps paths and HTTP methods to controllers.~~
+    - ~~Support parameterized routes~~ and route groups (prefixes, middleware).
 
 3. **Controllers and Dependency Injection**
     - Define a trait or structure for controllers.
