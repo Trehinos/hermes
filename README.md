@@ -9,8 +9,10 @@ framework capable of replacing typical PHP stacks.
 
 - Utilities for parsing and generating HTTP messages exposed under the `http`
   module.
-- A minimal asynchronous client for performing requests.
-- A lightweight asynchronous server used in examples and tests.
+- A minimal asynchronous client for performing requests, available under
+  the `http::services` module.
+- A lightweight asynchronous server used in examples and tests, also under
+  `http::services`.
 - A simple router and `Controller` trait to handle incoming requests.
 
 ## Building
