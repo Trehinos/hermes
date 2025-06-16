@@ -1,5 +1,7 @@
+use crate::concepts::value::json::JsonFormatter;
+use crate::concepts::value::{Value, ValueFormatter};
 use crate::concepts::Parsable;
-use crate::http::{Headers, Request, Response, Version};
+use crate::http::{Headers, Method, Request, Response, Version};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -51,17 +53,61 @@ impl Client {
         self.read_response().await
     }
 
-    /// Convenience helper to perform a GET request to `url`.
-    pub async fn get(url: &str) -> std::io::Result<Response> {
+    /// Convenience helper to perform a `method` request to `url` with specified `headers` and `body`.
+    pub async fn request(
+        method: Method,
+        url: &str,
+        headers: Headers,
+        body: &str,
+    ) -> std::io::Result<Response> {
         let (_, uri) = crate::http::Uri::parse(url)
             .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid url"))?;
-        let mut headers = Headers::new();
+        let mut headers = headers;
         headers.insert("Host", &[uri.authority.host.clone()]);
         let factory = crate::http::RequestFactory::version(Version::Http1_1);
-        let request = factory.get(uri, headers);
+        let request = factory.build(method, uri, headers, body);
         let host = request.target.authority.host.clone();
         let port = request.target.authority.port.unwrap_or(80);
         let mut client = Self::new(host, port).await;
         client.send(request).await
+    }
+
+    /// Convenience helper to perform a HEAD request to `url`.
+    pub async fn head(url: &str) -> std::io::Result<Response> {
+        Self::request(Method::Head, url, Headers::new(), "").await
+    }
+
+    /// Convenience helper to perform a GET request to `url`.
+    pub async fn get(url: &str) -> std::io::Result<Response> {
+        Self::request(Method::Get, url, Headers::new(), "").await
+    }
+
+    /// Convenience helper to perform a POST request to `url` with specified `headers` and `body`.
+    pub async fn post(url: &str, headers: Headers, body: &str) -> std::io::Result<Response> {
+        Self::request(Method::Post, url, headers, body).await
+    }
+
+    /// Convenience helper to perform a PUT request to `url` with specified `headers` and `body`.
+    pub async fn put(url: &str, headers: Headers, body: &str) -> std::io::Result<Response> {
+        Self::request(Method::Put, url, headers, body).await
+    }
+
+    /// Convenience helper to perform a PATCH request to `url` with specified `headers` and `body`.
+    pub async fn patch(url: &str, headers: Headers, body: &str) -> std::io::Result<Response> {
+        Self::request(Method::Patch, url, headers, body).await
+    }
+
+    /// Convenience helper to perform a DELETE request to `url`.
+    pub async fn delete(url: &str) -> std::io::Result<Response> {
+        Self::request(Method::Delete, url, Headers::new(), "").await
+    }
+
+    pub async fn request_with_json(
+        method: Method,
+        url: &str,
+        headers: Headers,
+        body: Value,
+    ) -> std::io::Result<Response> {
+        Self::request(method, url, headers, &JsonFormatter.format(body)).await
     }
 }
