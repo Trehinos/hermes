@@ -1,3 +1,9 @@
+//! Representation of loosely typed values and associated formatters.
+//!
+//! The [`Value`] enum can model typical JSON or YAML compatible values. It is
+//! accompanied by the [`ValueFormatter`] trait which allows serialising a
+//! `Value` into various textual formats.
+
 use crate::concepts::Dictionary;
 
 #[derive(Debug, Clone)]
@@ -17,3 +23,4 @@ pub trait ValueFormatter {
 }
 
 pub mod json;
+pub mod yaml;
