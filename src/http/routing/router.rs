@@ -5,11 +5,11 @@
 //! conditions (path, method and required headers).
 
 use crate::concepts::Dictionary;
-use crate::http::controller::Controller;
-use crate::http::{Headers, Method, Request, Response};
+use crate::http::routing::controller::Controller;
+use crate::http::{Headers, Method, Request, RequestTrait, Response, ResponseTrait};
 
 /// A single route definition used by the [`Router`].
-pub struct Route {
+pub struct Route<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
     /// URL pattern of the form `/path/{parameter}`.
     pub pattern: String,
     /// Allowed HTTP methods for this route.
@@ -17,10 +17,10 @@ pub struct Route {
     /// Required headers that must be present with matching values.
     pub headers: Headers,
     /// Controller handling the request when this route matches.
-    pub controller: Box<dyn Controller>,
+    pub controller: Box<dyn Controller<Ctx, Req, Res>>,
 }
 
-impl core::fmt::Debug for Route {
+impl<Ctx, Req: RequestTrait, Res: ResponseTrait> core::fmt::Debug for Route<Ctx, Req, Res> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Route")
             .field("pattern", &self.pattern)
@@ -30,13 +30,13 @@ impl core::fmt::Debug for Route {
     }
 }
 
-impl Route {
+impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Route<Ctx, Req, Res> {
     /// Create a new [`Route`].
     pub fn new(
         pattern: &str,
         methods: Vec<Method>,
         headers: Headers,
-        controller: Box<dyn Controller>,
+        controller: Box<dyn Controller<Ctx, Req, Res>>,
     ) -> Self {
         Self {
             pattern: pattern.to_string(),
@@ -47,7 +47,7 @@ impl Route {
     }
 
     /// Check whether `req` matches this route.
-    fn matches(&self, req: &Request) -> Option<Dictionary<String>> {
+    pub fn matches(&self, req: &Request) -> Option<Dictionary<String>> {
         // check method
         if !self.methods.is_empty() && !self.methods.contains(&req.method) {
             return None;
@@ -66,12 +66,12 @@ impl Route {
     }
 
     /// Invoke the controller for this route.
-    fn handle(&mut self, req: Request) -> Response {
-        self.controller.handle(req)
+    pub fn handle(&mut self, context: &Ctx, req: &mut Req) -> Res {
+        self.controller.handle(context, req)
     }
 
     /// Match the path part of the URL and extract parameters.
-    fn match_path(&self, path: &str) -> Option<Dictionary<String>> {
+    pub fn match_path(&self, path: &str) -> Option<Dictionary<String>> {
         let mut params = Dictionary::new();
         let pattern_parts: Vec<&str> = self.pattern.trim_matches('/').split('/').collect();
         let path_parts: Vec<&str> = path.trim_matches('/').split('/').collect();
@@ -92,37 +92,37 @@ impl Route {
 
 /// Result of a successful route match.
 #[derive(Debug)]
-pub struct RouteMatch<'a> {
+pub struct RouteMatch<'a, Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
     /// Reference to the matched route.
-    pub route: &'a Route,
+    pub route: &'a Route<Ctx, Req, Res>,
     /// Captured parameters from the URL pattern.
     pub params: Dictionary<String>,
 }
 
 /// Collection of [`Route`]s able to select one for a given request.
 #[derive(Debug, Default)]
-pub struct Router {
-    routes: Vec<Route>,
+pub struct Router<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
+    routes: Vec<Route<Ctx, Req, Res>>,
 }
 
-impl Router {
+impl<Ctx> Router<Ctx> {
     /// Create an empty [`Router`].
     pub fn new() -> Self {
         Self { routes: Vec::new() }
     }
 
     /// Register a new route.
-    pub fn add_route(&mut self, route: Route) {
+    pub fn add_route(&mut self, route: Route<Ctx>) {
         self.routes.push(route);
     }
 
     /// Iterate over registered routes.
-    pub fn iter(&self) -> impl Iterator<Item = &Route> {
+    pub fn iter(&self) -> impl Iterator<Item = &Route<Ctx>> {
         self.routes.iter()
     }
 
     /// Attempt to match `req` against registered routes.
-    pub fn match_request(&self, req: &Request) -> Option<RouteMatch> {
+    pub fn match_request(&self, req: &Request) -> Option<RouteMatch<Ctx>> {
         for route in &self.routes {
             if let Some(params) = route.matches(req) {
                 return Some(RouteMatch { route, params });
@@ -132,10 +132,10 @@ impl Router {
     }
 
     /// Handle `req` and return the generated [`Response`] if a route matches.
-    pub fn handle_request(&mut self, req: Request) -> Option<Response> {
+    pub fn handle_request(&mut self, context: &Ctx, req: &mut Request) -> Option<Response> {
         for route in &mut self.routes {
-            if route.matches(&req).is_some() {
-                return Some(route.handle(req));
+            if route.matches(req).is_some() {
+                return Some(route.handle(context, req));
             }
         }
         None
@@ -171,7 +171,7 @@ mod tests {
             "/foo/{id}",
             vec![Method::Get],
             Headers::new(),
-            Box::new(move |_| factory.no_content(Headers::new())),
+            Box::new(move |_: &(), _req: &mut Request| factory.no_content(Headers::new())),
         ));
 
         let req = request(Method::Get, "/foo/42");
@@ -188,7 +188,7 @@ mod tests {
             "/a/{b}",
             vec![Method::Post],
             headers.clone(),
-            Box::new(move |_| factory.no_content(Headers::new())),
+            Box::new(move |_: &(), _req: &mut Request| factory.no_content(Headers::new())),
         );
         let mut router = Router::new();
         router.add_route(route);
@@ -212,11 +212,13 @@ mod tests {
             "/ping",
             vec![Method::Get],
             Headers::new(),
-            Box::new(move |_| factory.with_status(Status::OK, Headers::new())),
+            Box::new(move |_: &(), _req: &mut Request| {
+                factory.with_status(Status::OK, Headers::new())
+            }),
         ));
 
-        let req = request(Method::Get, "/ping");
-        let resp = router.handle_request(req).unwrap();
+        let mut req = request(Method::Get, "/ping");
+        let resp = router.handle_request(&(), &mut req).unwrap();
         assert_eq!(resp.status(), Status::OK);
     }
 }

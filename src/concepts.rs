@@ -137,6 +137,8 @@ pub fn identifier(input: &str) -> IResult<&str, &str> {
 
 pub mod value;
 
+pub mod process;
+
 #[cfg(test)]
 mod tests {
     use super::*;

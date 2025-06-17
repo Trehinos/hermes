@@ -1,4 +1,3 @@
-pub mod controller;
 pub mod cycle;
 
 pub use cycle::uri::*;
@@ -8,7 +7,7 @@ pub use cycle::response::*;
 pub use cycle::factory::*;
 
 pub mod error;
-pub mod router;
 pub mod services;
+pub mod routing;
 
 pub use error::*;
