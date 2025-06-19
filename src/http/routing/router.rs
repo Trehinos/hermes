@@ -47,14 +47,14 @@ impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Route<Ctx, Req, Res> {
     }
 
     /// Check whether `req` matches this route.
-    pub fn matches(&self, req: &Request) -> Option<Dictionary<String>> {
+    pub fn matches(&self, req: &Req) -> Option<Dictionary<String>> {
         // check method
-        if !self.methods.is_empty() && !self.methods.contains(&req.method) {
+        if !self.methods.is_empty() && !self.methods.contains(&req.get_method()) {
             return None;
         }
         // check headers
         for (key, values) in self.headers.iter() {
-            if let Some(v) = req.message.headers.get(key) {
+            if let Some(v) = req.headers().get(key) {
                 if v != values {
                     return None;
                 }
@@ -62,7 +62,7 @@ impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Route<Ctx, Req, Res> {
                 return None;
             }
         }
-        self.match_path(&req.target.path.to_string())
+        self.match_path(&req.get_uri().path.to_string())
     }
 
     /// Invoke the controller for this route.
@@ -105,24 +105,24 @@ pub struct Router<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Respons
     routes: Vec<Route<Ctx, Req, Res>>,
 }
 
-impl<Ctx> Router<Ctx> {
+impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Router<Ctx, Req, Res> {
     /// Create an empty [`Router`].
     pub fn new() -> Self {
         Self { routes: Vec::new() }
     }
 
     /// Register a new route.
-    pub fn add_route(&mut self, route: Route<Ctx>) {
+    pub fn add_route(&mut self, route: Route<Ctx, Req, Res>) {
         self.routes.push(route);
     }
 
     /// Iterate over registered routes.
-    pub fn iter(&self) -> impl Iterator<Item = &Route<Ctx>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Route<Ctx, Req, Res>> {
         self.routes.iter()
     }
 
     /// Attempt to match `req` against registered routes.
-    pub fn match_request(&self, req: &Request) -> Option<RouteMatch<Ctx>> {
+    pub fn match_request(&self, req: &Req) -> Option<RouteMatch<Ctx, Req, Res>> {
         for route in &self.routes {
             if let Some(params) = route.matches(req) {
                 return Some(RouteMatch { route, params });
@@ -132,7 +132,7 @@ impl<Ctx> Router<Ctx> {
     }
 
     /// Handle `req` and return the generated [`Response`] if a route matches.
-    pub fn handle_request(&mut self, context: &Ctx, req: &mut Request) -> Option<Response> {
+    pub fn handle_request(&mut self, context: &Ctx, req: &mut Req) -> Option<Res> {
         for route in &mut self.routes {
             if route.matches(req).is_some() {
                 return Some(route.handle(context, req));
@@ -145,8 +145,10 @@ impl<Ctx> Router<Ctx> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::http::{Authority, Path, Query, ResponseFactory, Status, Version};
-    use crate::http::{Headers, Message, Request, ResponseTrait, Uri};
+    use crate::http::{
+        Authority, Headers, Message, MessageTrait, Path, Query, Request, RequestTrait, Response,
+        ResponseFactory, ResponseTrait, Status, Uri, Version,
+    };
 
     fn request(method: Method, path: &str) -> Request {
         let uri = Uri::new(
@@ -160,6 +162,128 @@ mod tests {
             method,
             target: uri,
             message: Message::v1_1(Headers::new(), String::new()),
+        }
+    }
+
+    #[derive(Clone)]
+    struct CustomRequest(Request);
+
+    impl MessageTrait for CustomRequest {
+        fn protocol_version(&self) -> Version {
+            self.0.protocol_version()
+        }
+
+        fn with_protocol_version(self, version: Version) -> Self {
+            Self(self.0.with_protocol_version(version))
+        }
+
+        fn headers(&self) -> &Headers {
+            self.0.headers()
+        }
+
+        fn headers_mut(&mut self) -> &mut Headers {
+            self.0.headers_mut()
+        }
+
+        fn has_header(&self, key: &str) -> bool {
+            self.0.has_header(key)
+        }
+
+        fn with_headers(self, headers: Headers) -> Self {
+            Self(self.0.with_headers(headers))
+        }
+
+        fn with_added_header(self, key: &str, value: &[String]) -> Self {
+            Self(self.0.with_added_header(key, value))
+        }
+
+        fn without_header(self, key: &str) -> Self {
+            Self(self.0.without_header(key))
+        }
+
+        fn body(&self) -> String {
+            self.0.body()
+        }
+
+        fn with_body(self, body: &str) -> Self {
+            Self(self.0.with_body(body))
+        }
+    }
+
+    impl RequestTrait for CustomRequest {
+        fn get_target(&self) -> String {
+            self.0.get_target()
+        }
+
+        fn get_method(&self) -> Method {
+            self.0.get_method()
+        }
+
+        fn with_method(self, method: Method) -> Self {
+            Self(self.0.with_method(method))
+        }
+
+        fn get_uri(&self) -> Uri {
+            self.0.get_uri()
+        }
+
+        fn with_uri(self, uri: Uri, preserve_host: bool) -> Self {
+            Self(self.0.with_uri(uri, preserve_host))
+        }
+    }
+
+    #[derive(Clone)]
+    struct CustomResponse(Response);
+
+    impl MessageTrait for CustomResponse {
+        fn protocol_version(&self) -> Version {
+            self.0.protocol_version()
+        }
+
+        fn with_protocol_version(self, version: Version) -> Self {
+            Self(self.0.with_protocol_version(version))
+        }
+
+        fn headers(&self) -> &Headers {
+            self.0.headers()
+        }
+
+        fn headers_mut(&mut self) -> &mut Headers {
+            self.0.headers_mut()
+        }
+
+        fn has_header(&self, key: &str) -> bool {
+            self.0.has_header(key)
+        }
+
+        fn with_headers(self, headers: Headers) -> Self {
+            Self(self.0.with_headers(headers))
+        }
+
+        fn with_added_header(self, key: &str, value: &[String]) -> Self {
+            Self(self.0.with_added_header(key, value))
+        }
+
+        fn without_header(self, key: &str) -> Self {
+            Self(self.0.without_header(key))
+        }
+
+        fn body(&self) -> String {
+            self.0.body()
+        }
+
+        fn with_body(self, body: &str) -> Self {
+            Self(self.0.with_body(body))
+        }
+    }
+
+    impl ResponseTrait for CustomResponse {
+        fn status(&self) -> Status {
+            self.0.status()
+        }
+
+        fn with_status(self, status: Status) -> Self {
+            Self(self.0.with_status(status))
         }
     }
 
@@ -220,5 +344,23 @@ mod tests {
         let mut req = request(Method::Get, "/ping");
         let resp = router.handle_request(&(), &mut req).unwrap();
         assert_eq!(resp.status(), Status::OK);
+    }
+
+    #[test]
+    fn test_generic_request_response() {
+        let mut router: Router<(), CustomRequest, CustomResponse> = Router::new();
+        router.add_route(Route::new(
+            "/custom",
+            vec![Method::Get],
+            Headers::new(),
+            Box::new(|_: &(), req: &mut CustomRequest| {
+                let factory = ResponseFactory::version(req.protocol_version());
+                CustomResponse(factory.with_status(Status::NoContent, Headers::new()))
+            }),
+        ));
+
+        let mut req = CustomRequest(request(Method::Get, "/custom"));
+        let resp = router.handle_request(&(), &mut req).unwrap();
+        assert_eq!(resp.status(), Status::NoContent);
     }
 }
