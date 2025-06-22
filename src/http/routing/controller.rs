@@ -1,10 +1,12 @@
 //! Controller and middleware abstractions for routing.
 
 use crate::concepts::BoxVec;
-use crate::http::{RequestTrait, ResponseTrait};
+use crate::http::{Request, RequestTrait, Response, ResponseTrait};
 
 /// Minimal request handler.
-pub trait Controller<Ctx, Req: RequestTrait, Res: ResponseTrait>: Send {
+pub trait Controller<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response>:
+    Send
+{
     /// Handle a request and generate a response.
     fn handle(&mut self, context: &Ctx, req: &mut Req) -> Res;
 }
@@ -19,7 +21,9 @@ where
 }
 
 /// Middleware executed before or after a [`Controller`].
-pub trait Middleware<Ctx, Req: RequestTrait, Res: ResponseTrait>: Send {
+pub trait Middleware<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response>:
+    Send
+{
     fn handle(
         &mut self,
         context: &Ctx,
@@ -29,7 +33,9 @@ pub trait Middleware<Ctx, Req: RequestTrait, Res: ResponseTrait>: Send {
 }
 
 /// Adapter allowing plain functions to act as [`Controller`]s.
-pub struct ControllerFn<Ctx, Req: RequestTrait, Res: ResponseTrait>(pub fn(&Ctx, &mut Req) -> Res);
+pub struct ControllerFn<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response>(
+    pub fn(&Ctx, &mut Req) -> Res,
+);
 
 impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Controller<Ctx, Req, Res>
     for ControllerFn<Ctx, Req, Res>
@@ -40,7 +46,7 @@ impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Controller<Ctx, Req, Res>
 }
 
 /// Internal helper to iterate over the middleware list.
-struct MiddlewareChain<'a, Ctx, Req: RequestTrait, Res: ResponseTrait> {
+struct MiddlewareChain<'a, Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
     middlewares: &'a mut [Box<dyn Middleware<Ctx, Req, Res>>],
     controller: &'a mut dyn Controller<Ctx, Req, Res>,
 }
@@ -72,7 +78,7 @@ fn execute_middleware_chain<Ctx, Req: RequestTrait, Res: ResponseTrait>(
 }
 
 /// Chain of [`Middleware`] executed around a [`Controller`].
-pub struct Mediator<Ctx, Req: RequestTrait, Res: ResponseTrait> {
+pub struct Mediator<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
     middlewares: BoxVec<dyn Middleware<Ctx, Req, Res>>,
     controller: Box<dyn Controller<Ctx, Req, Res>>,
 }
@@ -89,7 +95,7 @@ impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Mediator<Ctx, Req, Res> {
         }
     }
 
-    /// Append a middleware to the chain.
+    /// Append middleware to the chain.
     pub fn with_middleware(mut self, middleware: Box<dyn Middleware<Ctx, Req, Res>>) -> Self {
         self.middlewares.push(middleware);
         self
