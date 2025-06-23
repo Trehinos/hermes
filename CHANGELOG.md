@@ -18,6 +18,8 @@ In this version, the API will not change a lot, but it will grow very fast.
 * Reduce required Tokio features.
 * Standardize American English in documentation and update dependencies.
 * Introduce a simple dependency injection container.
+* Allow registering multiple instances of the same type in the container.
+* Name each instance with a string to retrieve a specific one.
 
 ### 0.1.1
 

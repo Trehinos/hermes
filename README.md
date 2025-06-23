@@ -15,8 +15,8 @@ framework capable of replacing typical PHP stacks.
   `http::services`.
 - A router with route groups and a `Controller` trait to handle incoming
   requests.
-- A simple dependency injection `Container` for sharing services with
-  controllers.
+- A simple dependency injection `Container` supporting multiple named instances
+  of a type for sharing services with controllers.
 
 ## Building
 
