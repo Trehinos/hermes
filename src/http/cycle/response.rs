@@ -51,7 +51,7 @@ pub enum Status {
     NotModified,
     /// 305
     ///
-    /// Deprecated, see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status#305_use_proxy
+    /// Deprecated, see: <https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status#305_use_proxy>
     UseProxy,
     /// 307
     TemporaryRedirect,
@@ -134,7 +134,7 @@ pub enum Status {
     /// 508
     LoopDetected,
     /// 510
-    /// Deprecated, see: https://datatracker.ietf.org/doc/status-change-http-experiments-to-historic"
+    /// Deprecated, see: <https://datatracker.ietf.org/doc/status-change-http-experiments-to-historic>
     NotExtended,
     /// 511
     NetworkAuthenticationRequired,
