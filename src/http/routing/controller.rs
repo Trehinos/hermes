@@ -263,7 +263,7 @@ mod tests {
                 req: &mut Request,
                 next: &mut dyn Controller<(), Request, Response>,
             ) -> Response {
-                let mut res = next.handle(ctx, req);
+                let res = next.handle(ctx, req);
                 self.0.lock().unwrap().0.push("after");
                 res
             }
