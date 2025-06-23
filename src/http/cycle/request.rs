@@ -224,6 +224,9 @@ pub trait RequestTrait: MessageTrait {
     where
         Self: Sized;
     fn get_uri(&self) -> Uri;
+    /// Return a new instance with the provided URI. When `preserve_host` is
+    /// `true`, the current `Host` header is kept; otherwise it is set from the
+    /// new URI.
     fn with_uri(self, uri: Uri, preserve_host: bool) -> Self
     where
         Self: Sized;
@@ -361,9 +364,14 @@ impl RequestTrait for Request {
         self.target.clone()
     }
 
+    /// Return a new instance with the provided URI.
+    ///
+    /// When `preserve_host` is `true`, the current `Host` header is kept
+    /// unchanged. Otherwise the header value is replaced with the host of the
+    /// provided `uri`.
     fn with_uri(self, uri: Uri, preserve_host: bool) -> Self {
         let mut headers = self.message.headers().clone();
-        if preserve_host {
+        if !preserve_host {
             headers.set("Host", &[&uri.authority.host]);
         }
         Self {
@@ -503,8 +511,13 @@ mod tests {
             Query::new(),
             None,
         );
-        let req3 = req2.with_uri(uri2, true);
-        assert_eq!(req3.get_header_line("Host"), Some("example".to_string()));
+        let req3 = req2.clone().with_uri(uri2.clone(), true);
+        // Host header should remain untouched when preserve_host is true
+        assert_eq!(req3.get_header_line("Host"), Some("host".to_string()));
         assert!(req3.get_target().contains("http://example"));
+
+        let req4 = req2.with_uri(uri2, false);
+        assert_eq!(req4.get_header_line("Host"), Some("example".to_string()));
+        assert!(req4.get_target().contains("http://example"));
     }
 }
