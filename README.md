@@ -18,7 +18,11 @@ framework capable of replacing typical PHP stacks.
 - A simple dependency injection `Container` supporting multiple named instances
   of a type for sharing services with controllers.
 - Basic session handling backed by a file-based store with a pluggable
-  `SessionStore` trait available under the `http::session` module.
+  `SessionStore` trait. Session values use the `Value` type and are stored using
+  a configurable formatter (JSON by default) under the `http::session` module.
+  The module also exposes a `generate_id` helper to create secure session IDs.
+- Simple cookie parsing and response helpers available under the `http::cookie`
+  module.
 
 ## Building
 

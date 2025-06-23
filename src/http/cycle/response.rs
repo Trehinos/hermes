@@ -1,5 +1,6 @@
 //! Structures and helpers for HTTP responses.
 use crate::concepts::Parsable;
+use crate::http::cookie::Cookie;
 use crate::http::Headers;
 use crate::http::{Message, MessageTrait, Version};
 use nom::bytes::complete::take_until;
@@ -614,6 +615,13 @@ impl ResponseTrait for Response {
     }
 }
 
+impl Response {
+    /// Return a new response with an additional `Set-Cookie` header.
+    pub fn with_cookie(self, cookie: Cookie) -> Self {
+        self.with_added_header("Set-Cookie", &[format!("{}={}", cookie.name, cookie.value)])
+    }
+}
+
 impl Display for Response {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -630,6 +638,7 @@ impl Display for Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::http::ResponseFactory;
 
     #[test]
     fn test_status_helpers() {
@@ -670,5 +679,14 @@ mod tests {
         let (rest2, parsed) = Status::parse(&line).unwrap();
         assert_eq!(rest2, "\r\n");
         assert_eq!(parsed, status);
+    }
+
+    #[test]
+    fn test_response_cookie_helper() {
+        let factory = ResponseFactory::version(Version::Http1_1);
+        let resp = factory
+            .with_status(Status::OK, Headers::new())
+            .with_cookie(Cookie::new("a", "1"));
+        assert_eq!(resp.get_header_line("Set-Cookie"), Some("a=1".to_string()));
     }
 }

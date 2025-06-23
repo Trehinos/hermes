@@ -11,6 +11,10 @@ In this version, the API will not change a lot, but it will grow very fast.
   default file-based implementation.
 * Document the default backend and customisation points in the roadmap and README.
 * Move the `session` module under `http` for better organisation.
+* Support storing `Value` objects in sessions and allow choosing a
+  `ValueFormatter` for the file-based backend (JSON by default).
+* Provide cookie parsing utilities and helpers to set cookies on responses.
+* Add `generate_id` to create secure session identifiers.
 
 ### 0.1.2
 

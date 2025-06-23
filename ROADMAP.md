@@ -21,7 +21,9 @@
     - ~~Securely store session data using a file-based backend by default.
       Provide an interface so developers can plug in custom stores such as
       databases or key-value systems.~~
-    - Provide a clear API for reading/writing cookies and handling session persistence.
+    - ~~Provide a clear API for reading/writing cookies and handling session persistence.~~
+    - ~~Support structured session values through the `Value` type and allow choosing
+      a `ValueFormatter` for file-based storage (JSON by default).~~
 
 6. **Security**
     - Implement authentication mechanisms (Basic, tokens, sessions, OAuth).

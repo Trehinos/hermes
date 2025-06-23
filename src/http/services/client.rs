@@ -1,7 +1,7 @@
 use crate::concepts::value::json::JsonFormatter;
 use crate::concepts::value::{Value, ValueFormatter};
 use crate::concepts::Parsable;
-use crate::http::{Headers, Method, Request, Response, Version};
+use crate::http::{Headers, Method, Request, RequestFactory, Response, Uri, Version};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -60,11 +60,11 @@ impl Client {
         headers: Headers,
         body: &str,
     ) -> std::io::Result<Response> {
-        let (_, uri) = crate::http::Uri::parse(url)
+        let (_, uri) = Uri::parse(url)
             .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid url"))?;
         let mut headers = headers;
         headers.insert("Host", &[uri.authority.host.clone()]);
-        let factory = crate::http::RequestFactory::version(Version::Http1_1);
+        let factory = RequestFactory::version(Version::Http1_1);
         let request = factory.build(method, uri, headers, body);
         let host = request.target.authority.host.clone();
         let port = request.target.authority.port.unwrap_or(80);

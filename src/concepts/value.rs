@@ -6,7 +6,7 @@
 
 use crate::concepts::Dictionary;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 /// Represents a generic JSON-like value used when parsing parameters.
 pub enum Value {
     Null,
@@ -20,6 +20,7 @@ pub enum Value {
 
 pub trait ValueFormatter {
     fn format(&self, value: Value) -> String;
+    fn parse(&self, input: &str) -> Option<Value>;
 }
 
 pub mod json;

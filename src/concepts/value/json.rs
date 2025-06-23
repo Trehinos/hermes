@@ -4,7 +4,10 @@
 //! [`Value`] into its JSON string representation.
 
 use crate::concepts::value::{Value, ValueFormatter};
+use crate::concepts::Dictionary;
+use serde_json::Value as JsonValue;
 
+#[derive(Clone)]
 pub struct JsonFormatter;
 
 impl ValueFormatter for JsonFormatter {
@@ -36,6 +39,33 @@ impl ValueFormatter for JsonFormatter {
                 s.push('}');
                 s
             }
+        }
+    }
+
+    fn parse(&self, input: &str) -> Option<Value> {
+        serde_json::from_str::<JsonValue>(input).ok().map(from_json)
+    }
+}
+
+fn from_json(v: JsonValue) -> Value {
+    match v {
+        JsonValue::Null => Value::Null,
+        JsonValue::Bool(b) => Value::Bool(b),
+        JsonValue::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Value::Int(i)
+            } else {
+                Value::Number(n.as_f64().unwrap())
+            }
+        }
+        JsonValue::String(s) => Value::String(s),
+        JsonValue::Array(a) => Value::Array(a.into_iter().map(from_json).collect()),
+        JsonValue::Object(o) => {
+            let mut d = Dictionary::new();
+            for (k, v) in o {
+                d.insert(k, from_json(v));
+            }
+            Value::Dictionary(d)
         }
     }
 }
