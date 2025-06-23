@@ -1,7 +1,7 @@
 //! Types for parsing and representing URIs.
 use crate::concepts::{concat_if_both, Parsable};
-use crate::http::Query;
 use crate::http::ParseError;
+use crate::http::Query;
 use nom::bytes::complete::{tag, take_till, take_until};
 use nom::bytes::take_while;
 use nom::character::anychar;
@@ -157,8 +157,12 @@ impl Parsable for Authority {
                 let (host_part, user_info) = take_until("@")(authority)?;
                 let (host_part, _) = tag("@")(host_part)?;
                 authority = host_part;
-                let (_, (u, ps)) = Self::parse_user_info(user_info)
-                    .map_err(|_| nom::Err::Error(nom::error::Error::new(user_info, nom::error::ErrorKind::Fail)))?;
+                let (_, (u, ps)) = Self::parse_user_info(user_info).map_err(|_| {
+                    nom::Err::Error(nom::error::Error::new(
+                        user_info,
+                        nom::error::ErrorKind::Fail,
+                    ))
+                })?;
                 user = u;
                 password = ps;
             }
@@ -168,8 +172,12 @@ impl Parsable for Authority {
             input = i;
             authority = a;
         }
-        let (_, (host, port)) = Self::parse_host(authority)
-            .map_err(|_| nom::Err::Error(nom::error::Error::new(authority, nom::error::ErrorKind::Fail)))?;
+        let (_, (host, port)) = Self::parse_host(authority).map_err(|_| {
+            nom::Err::Error(nom::error::Error::new(
+                authority,
+                nom::error::ErrorKind::Fail,
+            ))
+        })?;
         Ok((
             input,
             Self {
@@ -401,10 +409,27 @@ mod tests {
     fn test_path_and_authority_display() {
         let path = Path::new("/index.html".to_string(), Some("/info".to_string()));
         assert_eq!(path.to_string(), "/index.html/info");
-        let authority = Authority::new("host".to_string(), Some("u".to_string()), Some("p".to_string()), Some(8080));
-        assert_eq!(Authority::parse_user_info("user:pass").unwrap().1, (Some("user".to_string()), Some("pass".to_string())));
-        assert_eq!(Authority::parse_host("host:80").unwrap().1, ("host".to_string(), Some(80)));
-        let uri = Uri::new("http".to_string(), authority.clone(), path.clone(), Query::new(), Some("frag".to_string()));
+        let authority = Authority::new(
+            "host".to_string(),
+            Some("u".to_string()),
+            Some("p".to_string()),
+            Some(8080),
+        );
+        assert_eq!(
+            Authority::parse_user_info("user:pass").unwrap().1,
+            (Some("user".to_string()), Some("pass".to_string()))
+        );
+        assert_eq!(
+            Authority::parse_host("host:80").unwrap().1,
+            ("host".to_string(), Some(80))
+        );
+        let uri = Uri::new(
+            "http".to_string(),
+            authority.clone(),
+            path.clone(),
+            Query::new(),
+            Some("frag".to_string()),
+        );
         assert_eq!(uri.authority(), "u:p@host:8080");
         assert_eq!(uri.path().to_string(), path.to_string());
         assert!(uri.to_string().starts_with("http://u:p@host:8080"));

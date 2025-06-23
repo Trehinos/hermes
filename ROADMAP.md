@@ -6,7 +6,7 @@
 
 2. **Routing System**
     - ~~Introduce a router that maps paths and HTTP methods to controllers.~~
-    - ~~Support parameterized routes~~ and route groups (prefixes, middleware).
+    - ~~Support parameterized routes and route groups (prefixes, middleware).~~
 
 3. **Controllers and Dependency Injection**
     - ~~Define a trait or structure for controllers.~~

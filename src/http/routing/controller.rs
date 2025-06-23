@@ -32,6 +32,56 @@ pub trait Middleware<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Resp
     ) -> Res;
 }
 
+use std::sync::{Arc, Mutex};
+
+/// Wrapper to share middleware instances between multiple routes.
+///
+/// The inner middleware is stored inside an `Arc<Mutex<_>>` allowing it to be
+/// cloned while maintaining interior mutability. Each clone will lock the
+/// middleware when handling a request so access is synchronised.
+pub struct SharedMiddleware<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
+    inner: Arc<Mutex<Box<dyn Middleware<Ctx, Req, Res>>>>,
+}
+
+impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Clone for SharedMiddleware<Ctx, Req, Res> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
+    }
+}
+
+impl<Ctx, Req: RequestTrait, Res: ResponseTrait> core::fmt::Debug
+    for SharedMiddleware<Ctx, Req, Res>
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SharedMiddleware").finish()
+    }
+}
+
+impl<Ctx, Req: RequestTrait, Res: ResponseTrait> SharedMiddleware<Ctx, Req, Res> {
+    /// Create a new [`SharedMiddleware`] wrapping the provided middleware.
+    pub fn new(mw: Box<dyn Middleware<Ctx, Req, Res>>) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(mw)),
+        }
+    }
+}
+
+impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Middleware<Ctx, Req, Res>
+    for SharedMiddleware<Ctx, Req, Res>
+{
+    fn handle(
+        &mut self,
+        context: &Ctx,
+        req: &mut Req,
+        next: &mut dyn Controller<Ctx, Req, Res>,
+    ) -> Res {
+        let mut guard = self.inner.lock().unwrap();
+        guard.as_mut().handle(context, req, next)
+    }
+}
+
 /// Adapter allowing plain functions to act as [`Controller`]s.
 pub struct ControllerFn<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response>(
     pub fn(&Ctx, &mut Req) -> Res,

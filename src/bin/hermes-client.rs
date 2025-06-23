@@ -1,6 +1,6 @@
 use clap::{Arg, ArgAction, Command};
-use hermes::http::services::client::Client;
 use hermes::concepts::Parsable;
+use hermes::http::services::client::Client;
 use hermes::http::{Headers, Method, RequestFactory, Uri, Version};
 
 /// Version of the `hermes` crate used to build this binary.

@@ -13,7 +13,8 @@ framework capable of replacing typical PHP stacks.
   the `http::services` module.
 - A lightweight asynchronous server used in examples and tests, also under
   `http::services`.
-- A simple router and `Controller` trait to handle incoming requests.
+- A router with route groups and a `Controller` trait to handle incoming
+  requests.
 
 ## Building
 
