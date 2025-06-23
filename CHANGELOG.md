@@ -6,7 +6,11 @@ This file documents all notable changes to Hermes.
 
 In this version, the API will not change a lot, but it will grow very fast.
 
-### 0.1.2 (unreleased)
+### 0.1.3 (unreleased)
+
+...
+
+### 0.1.2
 
 * Finalize the routing system.
 * Move the HTTP client and server under the `http::services` namespace.
