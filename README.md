@@ -31,6 +31,18 @@ At this stage the crate offers utilities for parsing and generating HTTP
 messages. All core types are available under the `http` module. It also ships
 with a minimal asynchronous client and server used in the tests and examples.
 
+## Quick example
+
+```rust,no_run
+use hermes::http::services::client::Client;
+use hermes::http::ResponseTrait;
+
+# tokio_test::block_on(async {
+let resp = Client::get("http://example.com").await.unwrap();
+println!("Status: {}", resp.code());
+# });
+```
+
 ## Roadmap
 
 The project will evolve into a complete backend framework. Upcoming milestones
