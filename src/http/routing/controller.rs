@@ -89,6 +89,25 @@ fn execute_middleware_chain<Ctx, Req: RequestTrait, Res: ResponseTrait>(
 }
 
 /// Chain of [`Middleware`] executed around a [`Controller`].
+///
+/// # Example
+/// ```
+/// use hermes::http::routing::controller::{Mediator, Controller};
+/// use hermes::http::{Headers, Method, RequestFactory, ResponseFactory, Status, Version, Request, Response, Uri, Authority, Path, Query, ResponseTrait};
+///
+/// struct Ping;
+/// impl Controller<(), Request, Response> for Ping {
+///     fn handle(&mut self, _: &(), _: &mut Request) -> Response {
+///         ResponseFactory::version(Version::Http1_1).with_status(Status::OK, Headers::new())
+///     }
+/// }
+///
+/// let mut mediator = Mediator::new(Vec::new(), Box::new(Ping), Vec::new());
+/// let uri = Uri::new(String::new(), Authority::default(), Path::new("/".to_string(), None), Query::new(), None);
+/// let mut req = RequestFactory::version(Version::Http1_1).build(Method::Get, uri, Headers::new(), "");
+/// let resp = mediator.handle(&(), &mut req);
+/// assert_eq!(resp.status(), Status::OK);
+/// ```
 pub struct Mediator<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
     before: BoxVec<dyn Middleware<Ctx, Req, Res>>,
     after: BoxVec<dyn Middleware<Ctx, Req, Res>>,
@@ -263,7 +282,7 @@ mod tests {
                 req: &mut Request,
                 next: &mut dyn Controller<(), Request, Response>,
             ) -> Response {
-                let mut res = next.handle(ctx, req);
+                let res = next.handle(ctx, req);
                 self.0.lock().unwrap().0.push("after");
                 res
             }

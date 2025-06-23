@@ -100,6 +100,32 @@ pub struct RouteMatch<'a, Ctx, Req: RequestTrait = Request, Res: ResponseTrait =
 }
 
 /// Collection of [`Route`]s able to select one for a given request.
+///
+/// # Example
+/// ```
+/// use hermes::http::routing::router::{Router, Route};
+/// use hermes::http::routing::controller::Controller;
+/// use hermes::http::{Headers, Method, RequestFactory, ResponseFactory, Status, Version, Response, Request, Uri, Authority, Path, Query, ResponseTrait};
+///
+/// struct Ping;
+/// impl Controller<(), Request, Response> for Ping {
+///     fn handle(&mut self, _: &(), _: &mut Request) -> Response {
+///         ResponseFactory::version(Version::Http1_1).with_status(Status::OK, Headers::new())
+///     }
+/// }
+///
+/// let mut router = Router::new();
+/// router.add_route(Route::new(
+///     "/ping",
+///     vec![Method::Get],
+///     Headers::new(),
+///     Box::new(Ping),
+/// ));
+/// let uri = Uri::new(String::new(), Authority::default(), Path::new("/ping".to_string(), None), Query::new(), None);
+/// let mut req = RequestFactory::version(Version::Http1_1).build(Method::Get, uri, Headers::new(), "");
+/// let resp = router.handle_request(&(), &mut req).unwrap();
+/// assert_eq!(resp.status(), Status::OK);
+/// ```
 #[derive(Debug, Default)]
 pub struct Router<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
     routes: Vec<Route<Ctx, Req, Res>>,

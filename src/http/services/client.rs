@@ -9,12 +9,21 @@ use tokio::net::TcpStream;
 ///
 /// # Examples
 ///
-/// ```no_run
-/// use hermes::http::services::client::Client;
-/// use hermes::http::ResponseTrait;
+/// ```
+/// use hermes::http::services::{client::Client, server::Server};
+/// use hermes::http::{ResponseTrait, Status};
 /// # tokio_test::block_on(async {
-/// let response = Client::get("http://example.com").await.unwrap();
-/// println!("{}", response.code());
+/// let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+/// let port = listener.local_addr().unwrap().port();
+/// drop(listener);
+/// let addr = format!("127.0.0.1:{port}");
+/// let server = Server::new(&addr);
+/// let handle = tokio::spawn(async move { let _ = server.run().await; });
+/// tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+/// let url = format!("http://{}", addr);
+/// let response = Client::get(&url).await.unwrap();
+/// assert_eq!(response.status(), Status::NoContent);
+/// handle.abort();
 /// # })
 /// ```
 pub struct Client {

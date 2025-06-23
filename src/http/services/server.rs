@@ -7,14 +7,21 @@ use tokio::net::{TcpListener, TcpStream};
 ///
 /// # Examples
 ///
-/// ```no_run
-/// use hermes::http::services::server::Server;
-///
+/// ```
+/// use hermes::http::services::{server::Server, client::Client};
+/// use hermes::http::{Status, ResponseTrait};
 /// # tokio_test::block_on(async {
-/// let server = Server::new("127.0.0.1:8080");
-/// // This will block forever handling incoming connections
-/// // and therefore is marked as `no_run` in the documentation.
-/// // server.run().await.unwrap();
+/// let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+/// let port = listener.local_addr().unwrap().port();
+/// drop(listener);
+/// let addr = format!("127.0.0.1:{port}");
+/// let server = Server::new(&addr);
+/// let handle = tokio::spawn(async move { let _ = server.run().await; });
+/// tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+/// let url = format!("http://{}", addr);
+/// let resp = Client::get(&url).await.unwrap();
+/// assert_eq!(resp.status(), Status::NoContent);
+/// handle.abort();
 /// # })
 /// ```
 #[derive(Clone)]
