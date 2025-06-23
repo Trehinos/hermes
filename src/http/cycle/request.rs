@@ -1,6 +1,6 @@
 //! Structures and utilities for HTTP requests.
 use crate::concepts::{Dictionary, Parsable};
-use crate::http::{Headers, Message, MessageTrait, Uri, Version};
+use crate::http::{cookie::CookieJar, Headers, Message, MessageTrait, Uri, Version};
 use nom::bytes::complete::{tag, take_until, take_while1};
 use nom::character::complete::{space0, space1};
 use nom::IResult;
@@ -382,6 +382,17 @@ impl RequestTrait for Request {
     }
 }
 
+impl Request {
+    /// Parse cookies from the `Cookie` header if present.
+    pub fn cookies(&self) -> CookieJar {
+        if let Some(line) = self.get_header_line("Cookie") {
+            CookieJar::parse(&line)
+        } else {
+            CookieJar::new()
+        }
+    }
+}
+
 impl Display for Request {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -398,7 +409,7 @@ impl Display for Request {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::http::{Authority, Path};
+    use crate::http::{Authority, Path, Query};
     #[test]
     fn test_parse_query() {
         let query1 = "simple_query";
@@ -519,5 +530,26 @@ mod tests {
         let req4 = req2.with_uri(uri2, false);
         assert_eq!(req4.get_header_line("Host"), Some("example".to_string()));
         assert!(req4.get_target().contains("http://example"));
+    }
+
+    #[test]
+    fn test_cookie_parsing() {
+        let uri = Uri::new(
+            "http".into(),
+            Authority::default(),
+            Path::new("/".into(), None),
+            Query::new(),
+            None,
+        );
+        let mut headers = Headers::new();
+        headers.add("Cookie", "a=1; b=2");
+        let req = Request {
+            method: Method::Get,
+            target: uri,
+            message: Message::v1_1(headers, String::new()),
+        };
+        let cookies = req.cookies();
+        assert_eq!(cookies.get("a"), Some(&"1".to_string()));
+        assert_eq!(cookies.get("b"), Some(&"2".to_string()));
     }
 }

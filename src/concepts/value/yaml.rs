@@ -5,7 +5,10 @@
 //! and examples.
 
 use crate::concepts::value::{Value, ValueFormatter};
+use crate::concepts::Dictionary;
+use serde_yaml::Value as YamlValue;
 
+#[derive(Clone)]
 pub struct YamlFormatter;
 
 impl YamlFormatter {
@@ -58,6 +61,38 @@ impl YamlFormatter {
 impl ValueFormatter for YamlFormatter {
     fn format(&self, value: Value) -> String {
         self.format_with_indent(value, 0)
+    }
+
+    fn parse(&self, input: &str) -> Option<Value> {
+        serde_yaml::from_str::<YamlValue>(input).ok().map(from_yaml)
+    }
+}
+
+fn from_yaml(v: YamlValue) -> Value {
+    match v {
+        YamlValue::Null => Value::Null,
+        YamlValue::Bool(b) => Value::Bool(b),
+        YamlValue::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Value::Int(i)
+            } else if let Some(f) = n.as_f64() {
+                Value::Number(f)
+            } else {
+                Value::String(n.to_string())
+            }
+        }
+        YamlValue::String(s) => Value::String(s),
+        YamlValue::Sequence(seq) => Value::Array(seq.into_iter().map(from_yaml).collect()),
+        YamlValue::Mapping(map) => {
+            let mut d = Dictionary::new();
+            for (k, v) in map {
+                if let YamlValue::String(key) = k {
+                    d.insert(key, from_yaml(v));
+                }
+            }
+            Value::Dictionary(d)
+        }
+        YamlValue::Tagged(_) => Value::Null,
     }
 }
 

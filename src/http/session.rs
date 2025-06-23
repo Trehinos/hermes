@@ -9,29 +9,50 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use uuid::Uuid;
+
+use crate::concepts::value::json::JsonFormatter;
+use crate::concepts::value::{Value, ValueFormatter};
 
 /// Backend used to load and persist session data.
 pub trait SessionStore {
     /// Load all key/value pairs associated with `id`.
-    fn load(&self, id: &str) -> HashMap<String, String>;
+    fn load(&self, id: &str) -> HashMap<String, Value>;
     /// Persist all key/value pairs for `id`.
-    fn save(&self, id: &str, data: &HashMap<String, String>);
+    fn save(&self, id: &str, data: &HashMap<String, Value>);
     /// Remove all data associated with `id`.
     fn delete(&self, id: &str);
 }
 
-#[derive(Clone)]
-/// File-based session store saving each session in a separate file.
-pub struct FileStore {
-    root: PathBuf,
+/// Generate a random, collision-resistant session identifier.
+///
+/// This uses a UUID v4 under the hood.
+///
+/// # Examples
+/// ```
+/// use hermes::http::session::generate_id;
+///
+/// let id1 = generate_id();
+/// let id2 = generate_id();
+/// assert_ne!(id1, id2);
+/// ```
+pub fn generate_id() -> String {
+    Uuid::new_v4().to_string()
 }
 
-impl FileStore {
-    /// Create a new store saving sessions under `dir`.
-    pub fn new(dir: impl Into<PathBuf>) -> Self {
+#[derive(Clone)]
+/// File-based session store saving each session in a separate file.
+pub struct FileStore<F: ValueFormatter + Clone = JsonFormatter> {
+    root: PathBuf,
+    formatter: F,
+}
+
+impl<F: ValueFormatter + Clone> FileStore<F> {
+    /// Create a new store saving sessions under `dir` with `formatter`.
+    pub fn with_formatter(dir: impl Into<PathBuf>, formatter: F) -> Self {
         let root = dir.into();
         fs::create_dir_all(&root).ok();
-        Self { root }
+        Self { root, formatter }
     }
 
     fn path(&self, id: &str) -> PathBuf {
@@ -39,8 +60,15 @@ impl FileStore {
     }
 }
 
-impl SessionStore for FileStore {
-    fn load(&self, id: &str) -> HashMap<String, String> {
+impl FileStore<JsonFormatter> {
+    /// Create a new store saving sessions under `dir` using a JSON formatter.
+    pub fn new(dir: impl Into<PathBuf>) -> Self {
+        Self::with_formatter(dir, JsonFormatter)
+    }
+}
+
+impl<F: ValueFormatter + Clone> SessionStore for FileStore<F> {
+    fn load(&self, id: &str) -> HashMap<String, Value> {
         let path = self.path(id);
         let mut data = HashMap::new();
         if let Ok(mut f) = File::open(path) {
@@ -48,7 +76,9 @@ impl SessionStore for FileStore {
             if f.read_to_string(&mut buf).is_ok() {
                 for line in buf.lines() {
                     if let Some((k, v)) = line.split_once('=') {
-                        data.insert(k.to_string(), v.to_string());
+                        if let Some(val) = self.formatter.parse(v) {
+                            data.insert(k.to_string(), val);
+                        }
                     }
                 }
             }
@@ -56,11 +86,11 @@ impl SessionStore for FileStore {
         data
     }
 
-    fn save(&self, id: &str, data: &HashMap<String, String>) {
+    fn save(&self, id: &str, data: &HashMap<String, Value>) {
         let path = self.path(id);
         if let Ok(mut f) = File::create(path) {
             for (k, v) in data {
-                let _ = writeln!(f, "{}={}", k, v);
+                let _ = writeln!(f, "{}={}", k, self.formatter.format(v.clone()));
             }
         }
     }
@@ -74,7 +104,7 @@ impl SessionStore for FileStore {
 /// In-memory representation of a session loaded from a store.
 pub struct Session<S: SessionStore + Clone> {
     id: String,
-    data: HashMap<String, String>,
+    data: HashMap<String, Value>,
     store: S,
 }
 
@@ -87,13 +117,13 @@ impl<S: SessionStore + Clone> Session<S> {
     }
 
     /// Retrieve a value from the session.
-    pub fn get(&self, key: &str) -> Option<&str> {
-        self.data.get(key).map(|s| s.as_str())
+    pub fn get(&self, key: &str) -> Option<&Value> {
+        self.data.get(key)
     }
 
     /// Insert or update a value in the session.
-    pub fn insert(&mut self, key: impl Into<String>, value: impl Into<String>) {
-        self.data.insert(key.into(), value.into());
+    pub fn insert(&mut self, key: impl Into<String>, value: Value) {
+        self.data.insert(key.into(), value);
     }
 
     /// Remove a value from the session.
@@ -115,6 +145,7 @@ impl<S: SessionStore + Clone> Session<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::concepts::value::Value;
     use std::env;
 
     #[test]
@@ -122,10 +153,10 @@ mod tests {
         let dir = env::temp_dir().join("hermes_session_test");
         let store = FileStore::new(&dir);
         let mut data = HashMap::new();
-        data.insert("foo".to_string(), "bar".to_string());
+        data.insert("foo".to_string(), Value::String("bar".to_string()));
         store.save("s1", &data);
         let loaded = store.load("s1");
-        assert_eq!(loaded.get("foo"), Some(&"bar".to_string()));
+        assert_eq!(loaded.get("foo"), Some(&Value::String("bar".to_string())));
         store.delete("s1");
         fs::remove_dir_all(&dir).unwrap();
     }
@@ -136,13 +167,21 @@ mod tests {
         let store = FileStore::new(&dir);
         {
             let mut sess = Session::new("s2", store.clone());
-            sess.insert("a", "1");
+            sess.insert("a", Value::Int(1));
             sess.persist();
         }
         let store = FileStore::new(&dir);
         let sess = Session::new("s2", store.clone());
-        assert_eq!(sess.get("a"), Some("1"));
+        assert_eq!(sess.get("a"), Some(&Value::Int(1)));
         store.delete("s2");
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn generate_id_creates_unique_strings() {
+        let a = generate_id();
+        let b = generate_id();
+        assert_ne!(a, b);
+        assert_eq!(a.len(), 36);
     }
 }

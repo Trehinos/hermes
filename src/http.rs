@@ -11,6 +11,7 @@ pub use cycle::request::*;
 pub use cycle::response::*;
 pub use cycle::uri::*;
 
+pub mod cookie;
 pub mod error;
 pub mod routing;
 pub mod services;
