@@ -11,6 +11,7 @@
 3. **Controllers and Dependency Injection**
     - ~~Define a trait or structure for controllers.~~
     - ~~Add a dependency injection container to create required instances (services, database access, etc.).~~
+    - Support multiple named instances of the same type within the container.
 
 4. **Middleware (Request Pipeline)**
     - ~~Allow adding middleware executed before or after controllers (authentication, logging).~~
