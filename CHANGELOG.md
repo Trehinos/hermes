@@ -7,8 +7,10 @@ This file documents all notable changes to Hermes.
 In this version, the API will not change a lot, but it will grow very fast.
 
 ### 0.1.3 (unreleased)
-
-...
+* Introduce a `session` module exposing a `SessionStore` trait and a
+  default file-based implementation.
+* Document the default backend and customisation points in the roadmap and README.
+* Move the `session` module under `http` for better organisation.
 
 ### 0.1.2
 

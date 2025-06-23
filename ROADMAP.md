@@ -18,7 +18,9 @@
     - ~~Each middleware receives the request, can modify it, and then passes control to the next step.~~
 
 5. **Session and Cookie Management**
-    - Securely store session data (in-memory, database, or key-value backend).
+    - ~~Securely store session data using a file-based backend by default.
+      Provide an interface so developers can plug in custom stores such as
+      databases or key-value systems.~~
     - Provide a clear API for reading/writing cookies and handling session persistence.
 
 6. **Security**
