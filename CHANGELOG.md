@@ -10,6 +10,13 @@ In this version, the API will not change a lot, but it will grow very fast.
 
 * Finalize the routing system.
 * Move the HTTP client and server under the `http::services` namespace.
+* Reorganize the HTTP modules into separate namespaces.
+* Provide request helpers for common HTTP methods and JSON formatting utilities.
+* Add route groups with generic controllers and middleware defaults.
+* Reorder middleware parameters for consistency.
+* Fix host header preservation in `Request::with_uri`.
+* Reduce required Tokio features.
+* Standardize American English in documentation and update dependencies.
 
 ### 0.1.1
 
