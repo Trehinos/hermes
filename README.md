@@ -17,6 +17,8 @@ framework capable of replacing typical PHP stacks.
   requests.
 - A simple dependency injection `Container` supporting multiple named instances
   of a type for sharing services with controllers.
+- Basic session handling backed by a file-based store with a pluggable
+  `SessionStore` trait available under the `http::session` module.
 
 ## Building
 
@@ -50,7 +52,8 @@ println!("Status: {}", resp.code());
 
 The project will evolve into a complete backend framework. Upcoming milestones
 include an asynchronous server built on Tokio and Hyper, a richer routing
-system with middleware and dependency injection, session and security
+system with middleware and dependency injection, session management using a
+file-based backend by default with support for custom stores, security
 mechanisms, database access through an ORM, a template engine, CLI tools and
 continuous integration. Advanced features like form handling, background tasks
 and optional WebSocket support are also planned. See `ROADMAP.md` for more

@@ -14,5 +14,6 @@ pub use cycle::uri::*;
 pub mod error;
 pub mod routing;
 pub mod services;
+pub mod session;
 
 pub use error::*;
