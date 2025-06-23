@@ -7,4 +7,5 @@
 //!   crate.
 
 pub mod concepts;
+pub mod container;
 pub mod http;

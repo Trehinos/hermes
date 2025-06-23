@@ -17,6 +17,7 @@ In this version, the API will not change a lot, but it will grow very fast.
 * Fix host header preservation in `Request::with_uri`.
 * Reduce required Tokio features.
 * Standardize American English in documentation and update dependencies.
+* Introduce a simple dependency injection container.
 
 ### 0.1.1
 
