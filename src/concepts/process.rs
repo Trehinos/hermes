@@ -1,7 +1,7 @@
 //! Abstractions for running a small application lifecycle.
 //!
-//! The [`Process`] trait models a task that can be initialised, executed and
-//! finalised. [`Application`] is a simple wrapper holding configuration and a
+//! The [`Process`] trait models a task that can be initialized, executed and
+//! finalized. [`Application`] is a simple wrapper holding configuration and a
 //! boxed kernel implementing [`Process`].
 
 /// Basic process executed by the [`Application`] runtime.
