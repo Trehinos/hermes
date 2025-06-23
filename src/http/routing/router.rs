@@ -4,8 +4,8 @@
 //! [`Request`] to the first route that satisfies all
 //! conditions (path, method and required headers).
 
-use crate::concepts::Dictionary;
-use crate::http::routing::controller::Controller;
+use crate::concepts::{BoxVec, Dictionary};
+use crate::http::routing::controller::{Controller, Mediator, Middleware, SharedMiddleware};
 use crate::http::{Headers, Method, Request, RequestTrait, Response, ResponseTrait};
 
 /// A single route definition used by the [`Router`].
@@ -72,8 +72,13 @@ impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Route<Ctx, Req, Res> {
 
     /// Match the path part of the URL and extract parameters.
     pub fn match_path(&self, path: &str) -> Option<Dictionary<String>> {
+        Self::match_pattern(&self.pattern, path)
+    }
+
+    /// Match `path` against a pattern and extract parameters.
+    pub fn match_pattern(pattern: &str, path: &str) -> Option<Dictionary<String>> {
         let mut params = Dictionary::new();
-        let pattern_parts: Vec<&str> = self.pattern.trim_matches('/').split('/').collect();
+        let pattern_parts: Vec<&str> = pattern.trim_matches('/').split('/').collect();
         let path_parts: Vec<&str> = path.trim_matches('/').split('/').collect();
         if pattern_parts.len() != path_parts.len() {
             return None;
@@ -99,13 +104,113 @@ pub struct RouteMatch<'a, Ctx, Req: RequestTrait = Request, Res: ResponseTrait =
     pub params: Dictionary<String>,
 }
 
+/// Group of routes sharing a path prefix and middleware.
+#[derive(Debug, Default)]
+pub struct RouteGroup<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
+    prefix: String,
+    before: Vec<SharedMiddleware<Ctx, Req, Res>>,
+    after: Vec<SharedMiddleware<Ctx, Req, Res>>,
+    routes: Vec<Route<Ctx, Req, Res>>,
+    groups: Vec<RouteGroup<Ctx, Req, Res>>,
+}
+
+impl<Ctx: 'static, Req: RequestTrait + 'static, Res: ResponseTrait + 'static>
+    RouteGroup<Ctx, Req, Res>
+{
+    /// Create a new [`RouteGroup`] with the given path prefix.
+    pub fn new(prefix: &str) -> Self {
+        Self {
+            prefix: prefix.to_string(),
+            before: Vec::new(),
+            after: Vec::new(),
+            routes: Vec::new(),
+            groups: Vec::new(),
+        }
+    }
+
+    /// Append middleware executed before routes in this group.
+    pub fn with_before(mut self, mw: Box<dyn Middleware<Ctx, Req, Res>>) -> Self {
+        self.before.push(SharedMiddleware::new(mw));
+        self
+    }
+
+    /// Append middleware executed after routes in this group.
+    pub fn with_after(mut self, mw: Box<dyn Middleware<Ctx, Req, Res>>) -> Self {
+        self.after.push(SharedMiddleware::new(mw));
+        self
+    }
+
+    /// Register a route in this group.
+    pub fn add_route(&mut self, route: Route<Ctx, Req, Res>) {
+        self.routes.push(route);
+    }
+
+    /// Register a nested group.
+    pub fn add_group(&mut self, group: RouteGroup<Ctx, Req, Res>) {
+        self.groups.push(group);
+    }
+
+    fn join_paths(prefix: &str, path: &str) -> String {
+        let prefix = prefix.trim_end_matches('/');
+        let path = path.trim_start_matches('/');
+        if prefix.is_empty() {
+            format!("/{}", path)
+        } else if path.is_empty() {
+            prefix.to_string()
+        } else {
+            format!("{}/{}", prefix, path)
+        }
+    }
+
+    fn into_routes(
+        self,
+        prefix: String,
+        parent_before: &[SharedMiddleware<Ctx, Req, Res>],
+        parent_after: &[SharedMiddleware<Ctx, Req, Res>],
+    ) -> Vec<Route<Ctx, Req, Res>> {
+        let mut combined_prefix = Self::join_paths(&prefix, &self.prefix);
+        if combined_prefix.is_empty() {
+            combined_prefix = "/".to_string();
+        }
+
+        let mut before = parent_before.to_vec();
+        before.extend(self.before.clone());
+        let mut after = self.after.clone();
+        after.extend_from_slice(parent_after);
+
+        let mut routes = Vec::new();
+        for mut route in self.routes {
+            route.pattern = Self::join_paths(&combined_prefix, &route.pattern);
+            let before_vec: BoxVec<dyn Middleware<Ctx, Req, Res>> = before
+                .iter()
+                .cloned()
+                .map(|m| Box::new(m) as Box<dyn Middleware<_, _, _>>)
+                .collect();
+            let after_vec: BoxVec<dyn Middleware<Ctx, Req, Res>> = after
+                .iter()
+                .cloned()
+                .map(|m| Box::new(m) as Box<dyn Middleware<_, _, _>>)
+                .collect();
+            route.controller = Box::new(Mediator::new(before_vec, route.controller, after_vec));
+            routes.push(route);
+        }
+
+        for group in self.groups {
+            routes.extend(group.into_routes(combined_prefix.clone(), &before, &after));
+        }
+        routes
+    }
+}
+
 /// Collection of [`Route`]s able to select one for a given request.
 #[derive(Debug, Default)]
 pub struct Router<Ctx, Req: RequestTrait = Request, Res: ResponseTrait = Response> {
     routes: Vec<Route<Ctx, Req, Res>>,
 }
 
-impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Router<Ctx, Req, Res> {
+impl<Ctx: 'static, Req: RequestTrait + 'static, Res: ResponseTrait + 'static>
+    Router<Ctx, Req, Res>
+{
     /// Create an empty [`Router`].
     pub fn new() -> Self {
         Self { routes: Vec::new() }
@@ -114,6 +219,12 @@ impl<Ctx, Req: RequestTrait, Res: ResponseTrait> Router<Ctx, Req, Res> {
     /// Register a new route.
     pub fn add_route(&mut self, route: Route<Ctx, Req, Res>) {
         self.routes.push(route);
+    }
+
+    /// Register a group of routes.
+    pub fn add_group(&mut self, group: RouteGroup<Ctx, Req, Res>) {
+        let routes = group.into_routes(String::new(), &[], &[]);
+        self.routes.extend(routes);
     }
 
     /// Iterate over registered routes.
@@ -362,5 +473,54 @@ mod tests {
         let mut req = CustomRequest(request(Method::Get, "/custom"));
         let resp = router.handle_request(&(), &mut req).unwrap();
         assert_eq!(resp.status(), Status::NoContent);
+    }
+
+    struct GroupBefore;
+    impl Middleware<(), Request, Response> for GroupBefore {
+        fn handle(
+            &mut self,
+            ctx: &(),
+            req: &mut Request,
+            next: &mut dyn Controller<(), Request, Response>,
+        ) -> Response {
+            req.headers_mut().add("X-Group-Before", "1");
+            next.handle(ctx, req)
+        }
+    }
+
+    struct GroupAfter;
+    impl Middleware<(), Request, Response> for GroupAfter {
+        fn handle(
+            &mut self,
+            ctx: &(),
+            req: &mut Request,
+            next: &mut dyn Controller<(), Request, Response>,
+        ) -> Response {
+            let mut res = next.handle(ctx, req);
+            res.headers_mut().add("X-Group-After", "1");
+            res
+        }
+    }
+
+    #[test]
+    fn test_group_prefix_and_middleware() {
+        let factory = ResponseFactory::version(Version::Http1_1);
+        let mut group = RouteGroup::new("/api")
+            .with_before(Box::new(GroupBefore))
+            .with_after(Box::new(GroupAfter));
+        group.add_route(Route::new(
+            "/foo",
+            vec![Method::Get],
+            Headers::new(),
+            Box::new(move |_: &(), _req: &mut Request| factory.no_content(Headers::new())),
+        ));
+
+        let mut router = Router::new();
+        router.add_group(group);
+
+        let mut req = request(Method::Get, "/api/foo");
+        let resp = router.handle_request(&(), &mut req).unwrap();
+        assert!(req.has_header("X-Group-Before"));
+        assert!(resp.has_header("X-Group-After"));
     }
 }

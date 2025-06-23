@@ -39,9 +39,7 @@ async fn main() -> std::io::Result<()> {
     let address = matches
         .get_one::<String>("address")
         .expect("address has default");
-    let port = matches
-        .get_one::<u16>("port")
-        .expect("port has default");
+    let port = matches.get_one::<u16>("port").expect("port has default");
     println!("Listening on {}:{}", address, port);
     let addr = format!("{}:{}", address, port);
     let server = Server::new(&addr);

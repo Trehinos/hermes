@@ -1,6 +1,6 @@
 use hermes::http::services::client::Client;
-use hermes::http::{ResponseTrait, Status};
 use hermes::http::services::server::Server;
+use hermes::http::{ResponseTrait, Status};
 
 /// Ensure the client can talk to the server and multiple requests are
 /// handled concurrently.
