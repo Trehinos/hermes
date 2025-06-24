@@ -15,6 +15,8 @@ In this version, the API will not change a lot, but it will grow very fast.
   `ValueFormatter` for the file-based backend (JSON by default).
 * Provide cookie parsing utilities and helpers to set cookies on responses.
 * Add `generate_id` to create secure session identifiers.
+* Integrate a router and session/cookie handling into the asynchronous server.
+* The HTTP client now stores and sends cookies automatically.
 
 ### 0.1.2
 

@@ -10,9 +10,9 @@ framework capable of replacing typical PHP stacks.
 - Utilities for parsing and generating HTTP messages exposed under the `http`
   module.
 - A minimal asynchronous client for performing requests, available under
-  the `http::services` module.
-- A lightweight asynchronous server used in examples and tests, also under
-  `http::services`.
+  the `http::services` module. The client stores cookies between requests.
+- A lightweight asynchronous server with a router, cookie handling and session
+  persistence, also under `http::services`.
 - A router with route groups and a `Controller` trait to handle incoming
   requests.
 - A simple dependency injection `Container` supporting multiple named instances

@@ -24,6 +24,7 @@
     - ~~Provide a clear API for reading/writing cookies and handling session persistence.~~
     - ~~Support structured session values through the `Value` type and allow choosing
       a `ValueFormatter` for file-based storage (JSON by default).~~
+    - Integrate the router and session management into the asynchronous server with cookie handling.
 
 6. **Security**
     - Implement authentication mechanisms (Basic, tokens, sessions, OAuth).

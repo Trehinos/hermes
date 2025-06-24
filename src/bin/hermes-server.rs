@@ -1,5 +1,8 @@
 use clap::{value_parser, Arg, ArgAction, Command};
-use hermes::http::services::server::Server;
+use hermes::http::routing::router::{Route, Router};
+use hermes::http::services::server::{RequestContext, Server};
+use hermes::http::session::FileStore;
+use hermes::http::{Headers, Method, Request, ResponseFactory, Status, Version};
 
 /// Version of the `hermes` crate used to build this binary.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -42,6 +45,16 @@ async fn main() -> std::io::Result<()> {
     let port = matches.get_one::<u16>("port").expect("port has default");
     println!("Listening on {}:{}", address, port);
     let addr = format!("{}:{}", address, port);
-    let server = Server::new(&addr);
+    let store = FileStore::new("./sessions");
+    let mut router: Router<RequestContext<_>> = Router::new();
+    router.add_route(Route::new(
+        "/",
+        vec![Method::Get],
+        Headers::new(),
+        Box::new(|_ctx: &RequestContext<_>, _req: &mut Request| {
+            ResponseFactory::version(Version::Http1_1).with_status(Status::OK, Headers::new())
+        }),
+    ));
+    let server = Server::new(&addr, router, store);
     server.run().await
 }

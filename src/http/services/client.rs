@@ -1,7 +1,10 @@
 use crate::concepts::value::json::JsonFormatter;
 use crate::concepts::value::{Value, ValueFormatter};
 use crate::concepts::Parsable;
-use crate::http::{Headers, Method, Request, RequestFactory, Response, Uri, Version};
+use crate::http::{
+    cookie::CookieJar, Headers, MessageTrait, Method, Request, RequestFactory, Response, Uri,
+    Version,
+};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -18,39 +21,60 @@ use tokio::net::TcpStream;
 /// # })
 /// ```
 pub struct Client {
-    stream: TcpStream,
+    host: String,
+    port: u16,
+    cookies: CookieJar,
 }
 
 impl Client {
-    pub async fn new(host: String, port: u16) -> Self {
+    pub fn new(host: String, port: u16) -> Self {
         Self {
-            stream: TcpStream::connect(format!("{}:{}", host, port))
-                .await
-                .unwrap(),
+            host,
+            port,
+            cookies: CookieJar::new(),
         }
     }
 
-    async fn write_request(&mut self, request: &Request) -> std::io::Result<()> {
-        self.stream
-            .write_all(request.to_string().as_bytes())
-            .await?;
-        self.stream.shutdown().await
+    /// Access the stored cookies.
+    pub fn cookies(&self) -> &CookieJar {
+        &self.cookies
     }
 
-    async fn read_response(&mut self) -> std::io::Result<Response> {
+    /// Mutable access to the stored cookies.
+    pub fn cookies_mut(&mut self) -> &mut CookieJar {
+        &mut self.cookies
+    }
+
+    async fn connect(&self) -> std::io::Result<TcpStream> {
+        TcpStream::connect(format!("{}:{}", self.host, self.port)).await
+    }
+
+    /// Send a [`Request`] over the wire and return the parsed [`Response`].
+    pub async fn send(&mut self, mut request: Request) -> std::io::Result<Response> {
+        if self.cookies.iter().next().is_some() {
+            request
+                .headers_mut()
+                .add("Cookie", &self.cookies.to_header());
+        }
+        let mut stream = self.connect().await?;
+        stream.write_all(request.to_string().as_bytes()).await?;
+        stream.shutdown().await?;
         let mut buf = Vec::new();
-        self.stream.read_to_end(&mut buf).await?;
+        stream.read_to_end(&mut buf).await?;
         let text = String::from_utf8_lossy(&buf);
         let (_, response) = Response::parse(&text).map_err(|_| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid response")
         })?;
+        if let Some(values) = response.headers().get("Set-Cookie") {
+            for v in values {
+                let cookie = v.split(';').next().unwrap_or("");
+                let jar = CookieJar::parse(cookie);
+                for (n, val) in jar.iter() {
+                    self.cookies.insert(n.clone(), val.clone());
+                }
+            }
+        }
         Ok(response)
-    }
-
-    /// Send a [`Request`] over the wire and return the parsed [`Response`].
-    pub async fn send(&mut self, request: Request) -> std::io::Result<Response> {
-        self.write_request(&request).await?;
-        self.read_response().await
     }
 
     /// Convenience helper to perform a `method` request to `url` with specified `headers` and `body`.
@@ -68,7 +92,7 @@ impl Client {
         let request = factory.build(method, uri, headers, body);
         let host = request.target.authority.host.clone();
         let port = request.target.authority.port.unwrap_or(80);
-        let mut client = Self::new(host, port).await;
+        let mut client = Self::new(host, port);
         client.send(request).await
     }
 

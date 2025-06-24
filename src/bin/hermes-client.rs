@@ -81,7 +81,7 @@ async fn main() -> std::io::Result<()> {
     let request = factory.build(method, uri, headers, &body);
     let host = request.target.authority.host.clone();
     let port = request.target.authority.port.unwrap_or(80);
-    let mut client = Client::new(host, port).await;
+    let mut client = Client::new(host, port);
     let response = client.send(request).await?;
     println!("{}", response);
     Ok(())
