@@ -407,7 +407,7 @@ impl ResponseFactory {
     /// assert_eq!(resp.body(), "");
     /// ```
     pub fn no_content(&self, headers: Headers) -> Response {
-        self.with_status(Status::OK, headers)
+        self.with_status(Status::NoContent, headers)
     }
     /// Create a 300 Multiple Choices response.
     ///
@@ -631,5 +631,12 @@ mod tests {
         };
         let resp = factory.unauthorized(www, Headers::new());
         assert_eq!(resp.status, Status::Unauthorized);
+    }
+
+    #[test]
+    fn test_no_content_status() {
+        let factory = ResponseFactory::version(Version::Http1_1);
+        let resp = factory.no_content(Headers::new());
+        assert_eq!(resp.status, Status::NoContent);
     }
 }
