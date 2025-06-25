@@ -102,6 +102,40 @@ impl Client {
         Self::request(Method::Delete, url, Headers::new(), "").await
     }
 
+    /// Convenience helper to send a JSON body using the specified HTTP `method`.
+    ///
+    /// The provided [`Value`] is serialised with [`JsonFormatter`] before the
+    /// request is sent.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hermes::http::services::{client::Client, server::Server};
+    /// use hermes::http::{Headers, Method, ResponseTrait};
+    /// use hermes::concepts::value::Value;
+    /// # tokio_test::block_on(async {
+    /// let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    /// let port = listener.local_addr().unwrap().port();
+    /// drop(listener);
+    /// let address = format!("127.0.0.1:{}", port);
+    /// let server = Server::new(&address);
+    /// let handle = tokio::spawn(async move { let _ = server.run().await; });
+    /// tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    /// let url = format!("http://{}", address);
+    /// let mut headers = Headers::new();
+    /// headers.set("Content-Type", &["application/json"]);
+    /// let response = Client::request_with_json(
+    ///     Method::Post,
+    ///     &url,
+    ///     headers,
+    ///     Value::String("hello".into()),
+    /// )
+    /// .await
+    /// .unwrap();
+    /// assert_eq!(response.code(), 204);
+    /// handle.abort();
+    /// # })
+    /// ```
     pub async fn request_with_json(
         method: Method,
         url: &str,
