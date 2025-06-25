@@ -21,15 +21,17 @@ async fn test_client_server_parallel_requests() {
     // Give the server a moment to start listening
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-    // `Client::get` cannot parse URLs ending with a slash when a port is
-    // specified, so we omit the trailing `/` here.
     let url = format!("http://{}", address);
+    let url_with_slash = format!("{}/", url);
     let mut tasks = Vec::new();
     for _ in 0..5 {
-        let url = url.clone();
-        tasks.push(tokio::spawn(
-            async move { Client::get(&url).await.unwrap() },
-        ));
+        let u = url.clone();
+        tasks.push(tokio::spawn(async move { Client::get(&u).await.unwrap() }));
+    }
+    // Also request the same endpoint including a trailing slash.
+    for _ in 0..5 {
+        let u = url_with_slash.clone();
+        tasks.push(tokio::spawn(async move { Client::get(&u).await.unwrap() }));
     }
 
     for t in tasks {

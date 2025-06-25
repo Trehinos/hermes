@@ -2,8 +2,8 @@
 use crate::concepts::{concat_if_both, Parsable};
 use crate::http::ParseError;
 use crate::http::Query;
+use nom::bytes::complete::take_while;
 use nom::bytes::complete::{tag, take_till, take_until};
-use nom::bytes::take_while;
 use nom::character::anychar;
 use nom::combinator::opt;
 use nom::multi::fold_many0;
@@ -317,7 +317,7 @@ impl Display for Uri {
             concat_if_both(&self.scheme, ":"),
             concat_if_both(
                 "//",
-                &if path.resource.is_empty() {
+                &if path.resource.is_empty() || path.resource.starts_with('/') {
                     self.authority()
                 } else {
                     concat_if_both(&self.authority(), "/")
