@@ -618,7 +618,7 @@ mod tests {
         );
         let resp = factory.moved_permanently(target.clone());
         assert_eq!(resp.status, Status::MovedPermanently);
-        assert!(resp.message.raw().contains("http://host//"));
+        assert!(resp.message.raw().contains("http://host/"));
 
         let resp = factory.ok(Headers::new(), "body".to_string());
         assert_eq!(resp.status, Status::OK);
